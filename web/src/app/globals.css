@@ -1,0 +1,139 @@
+@import "tailwindcss";
+
+/* Role tokens follow Coinbase CDS names (docs/design/DESIGN.md, Tokens).
+   Light is pinned by default; dark is opt-in through data-theme. */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #ffffff;
+  --bg-alt: #f6f6f3;
+  --bg-elev-1: #ffffff;
+  --bg-elev-2: #efefeb;
+  --fg: #141417;
+  --fg-muted: #5e6068;
+  --fg-positive: #0b7a3e;
+  --fg-negative: #c0322b;
+  --fg-warning: #8a5900;
+  --bg-positive-wash: #e7f4ec;
+  --bg-negative-wash: #fcebe9;
+  --bg-warning-wash: #fbf1da;
+  --line: #e6e6e1;
+  --line-heavy: #cbcbc4;
+  --brand: #5a43dc;
+  --brand-wash: #efecfc;
+  --leg-1: #5a43dc;
+  --leg-2: #d08600;
+  --leg-3: #2c6fb0;
+  --leg-4: #b3457f;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #101013;
+  --bg-alt: #17171b;
+  --bg-elev-1: #1b1b20;
+  --bg-elev-2: #25252b;
+  --fg: #f1f1f3;
+  --fg-muted: #a3a3ab;
+  --fg-positive: #73cf9c;
+  --fg-negative: #ff8f86;
+  --fg-warning: #e9b95e;
+  --bg-positive-wash: #13281c;
+  --bg-negative-wash: #2e1715;
+  --bg-warning-wash: #2b2210;
+  --line: #2b2b31;
+  --line-heavy: #42424b;
+  --brand: #a597ff;
+  --brand-wash: #231e40;
+  --leg-1: #a597ff;
+  --leg-2: #efb244;
+  --leg-3: #6aa7e2;
+  --leg-4: #e47db6;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-alt: var(--bg-alt);
+  --color-bg-elev-1: var(--bg-elev-1);
+  --color-bg-elev-2: var(--bg-elev-2);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-positive: var(--fg-positive);
+  --color-fg-negative: var(--fg-negative);
+  --color-fg-warning: var(--fg-warning);
+  --color-bg-positive-wash: var(--bg-positive-wash);
+  --color-bg-negative-wash: var(--bg-negative-wash);
+  --color-bg-warning-wash: var(--bg-warning-wash);
+  --color-line: var(--line);
+  --color-line-heavy: var(--line-heavy);
+  --color-brand: var(--brand);
+  --color-brand-wash: var(--brand-wash);
+  --color-leg-1: var(--leg-1);
+  --color-leg-2: var(--leg-2);
+  --color-leg-3: var(--leg-3);
+  --color-leg-4: var(--leg-4);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-weight: 450;
+  font-feature-settings: "ss01", "cv11";
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise {
+  animation: rise 0.3s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes draw {
+  from {
+    stroke-dashoffset: 24;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.draw path {
+  stroke-dasharray: 24;
+  animation: draw 0.4s 0.1s ease-out both;
+}
+
+@keyframes fade {
+  from {
+    opacity: 0.25;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fade {
+  animation: fade 0.25s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .fade,
+  .draw path {
+    animation: none;
+  }
+}

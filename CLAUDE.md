@@ -37,3 +37,7 @@ Full brief: `BRIEF.md` (tracks, bounties, Gemini API notes, submission checklist
 
 ## Status
 Chosen 2026-11-18 (pending teammate confirmation): event-outcome basket tokens on Arc testnet backed by Gemini prediction markets. DeFi track + Arc award + Gemini bounty. See `.planning/PROJECT.md`.
+
+## Docs
+- `docs/README.md` indexes the design, frontend, pitch and ops docs. For frontend work, start at `docs/frontend/CHANGE_PLAN.md`.
+- `web/` is the Next.js 16 frontend (mock data for now); see `docs/frontend/PROTOTYPE.md`.
