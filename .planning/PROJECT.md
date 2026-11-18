@@ -1,8 +1,8 @@
-# Event Baskets (working name)
+# Weave
 
 ## What This Is
 
-Tokenized baskets of real-world event outcomes on Arc testnet, backed by Gemini prediction-market contracts. A user either picks a curated basket (e.g. "Recession Hedge", "Crypto Winter") or types a real-life worry, and an AI assembles a hedge basket from matching Gemini markets. They buy the basket token with USDC. The token's value tracks live Gemini odds, and when the events resolve it redeems for USDC onchain. Each basket works like an ETF of events, or insurance you can trade.
+Tokenized baskets of real-world event outcomes on Arc testnet, backed by Gemini prediction-market contracts. A user either picks a curated basket (e.g. "Recession Hedge", "Crypto Winter") or types a real-life worry, and an AI assembles a hedge basket from matching Gemini markets. They buy the basket token with USDC. The token's value tracks live Gemini odds, and when the events resolve it redeems for USDC onchain. Each basket works like an ETF of events: "Weave your worries into one hedge."
 
 ## Core Value
 
@@ -59,6 +59,8 @@ The full loop must work end to end in the demo: worry → AI basket → buy with
 | Curated baskets + AI-built from a worry | Curated is reliable for the demo; AI adds the wow and UX | — Pending |
 | Demo on daily BTC market resolution | Real resolution on camera, no faked outcome | — Pending |
 | Operator-trusted resolution | Gemini is off-chain; honest risk disclosure beats a fake oracle | — Pending |
+| Grilling round (Q1-Q11), see research/DECISIONS-GRILLING.md | Hero user, reserve + hedge backing, pricing, sizing, scope trims, team split | — Pending |
+| Basket price = Σ w·ask × 1.02, NAV = Σ w·mid | Linear pro-rata payoff → exact static replication; correlation-free pricing | — Pending |
 
 ## Evolution
 
