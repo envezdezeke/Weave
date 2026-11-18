@@ -18,6 +18,11 @@ These decisions came out of the /grilling session. All were accepted by the user
 | Q12 | Early exit | Hold to expiry for v1. "Sell back to vault at mid − 2%" is listed first under next steps. Q&A answer: standard tokens allow a secondary market. |
 | Q13 | Hedge fill failure | The mint still succeeds, and the hedge record marks the trade "unhedged" and retries. A visible hedge-coverage % sits beside the solvency gauge. The reserve always guarantees payout. |
 | Q14 | No-match worries | The AI says plainly that no good hedge exists, shows near-misses with a coverage rating, and suggests a curated basket. One such query appears in the video (5 s). |
+| Q15 | Frontend review | Cayden pushes their frontend to a `frontend` branch today. Claude reviews it against this file and writes a keep/change/add gap list. |
+| Q16 | "Why not sell BTC or buy a put?" | The crypto crash basket is the on-camera proof the mechanism works. The value pitch is worries with no existing hedge (mixed worry in the AI-builder demo: "paid in ETH, rent due if the Fed does not cut"). Q&A advantages: fixed known cost, no liquidation, no taxable sale, $5 tickets, mixes crypto and non-crypto risk. |
+| Q17 | Why a basket | Weights come from the user's own exposure (holdings mix). Demo persona is paid 70% BTC / 30% ETH, which gives a 2-leg 70/30 Crash Cover. SOL is dropped. |
+| Q18 | Hedge length | State it honestly: cover up to about 2 weeks today (Gemini crypto expiries reach about Nov 30). The builder offers only real expiries, and the UI shows the latest available. "Rolling cover" goes on the next-steps slide. |
+| Q19 | Staying on track | A north-star checklist at the top of CLAUDE.md. Anything not on it is out of scope until the Thu-evening freeze. |
 
 ## Pricing model (answer to "how do we price a basket?")
 
