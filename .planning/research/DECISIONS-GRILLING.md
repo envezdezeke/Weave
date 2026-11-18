@@ -15,6 +15,9 @@ These decisions came out of the /grilling session. All were accepted by the user
 | Q9 | Composability proof | A standard ERC-1155 transfer shown on the explorer (10 s video beat). Lending against baskets goes under "next". |
 | Q10 | Name | **Weave** (repo renamed to envezdezeke/Weave). |
 | Q11 | Team split | Ezekiel: contracts, Arc deploy, resolver, Gemini hedger. Teammate: Gemini data, frontend, AI builder, README, video, and owns the pitch from Thursday afternoon. Shared `packages/core` holds the math and types; the two halves meet at the operator API. |
+| Q12 | Early exit | Hold to expiry for v1. "Sell back to vault at mid − 2%" is listed first under next steps. Q&A answer: standard tokens allow a secondary market. |
+| Q13 | Hedge fill failure | The mint still succeeds, and the hedge record marks the trade "unhedged" and retries. A visible hedge-coverage % sits beside the solvency gauge. The reserve always guarantees payout. |
+| Q14 | No-match worries | The AI says plainly that no good hedge exists, shows near-misses with a coverage rating, and suggests a curated basket. One such query appears in the video (5 s). |
 
 ## Pricing model (answer to "how do we price a basket?")
 
