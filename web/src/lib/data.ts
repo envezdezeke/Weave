@@ -66,7 +66,7 @@ export const CRASH_ID = "crash-15m";
 export const baskets: Basket[] = [
   {
     id: CRASH_ID,
-    name: "BTC/ETH Crash Hedge (15 min)",
+    name: "BTC/ETH Crash Cover (15 min)",
     tagline: "Pays if BTC or ETH falls in the next 15 minutes",
     pitch: "Paid in crypto? Hedge a drop in the next 15 minutes.",
     thesis:
@@ -75,7 +75,7 @@ export const baskets: Basket[] = [
     kind: "crypto",
     badge: "Live",
     rolling: true,
-    legs: [leg("btc-15m", 0.6), leg("eth-15m", 0.4)],
+    legs: [leg("btc-15m", 0.7), leg("eth-15m", 0.3)], // decision Q17: demo persona is paid 70% BTC, 30% ETH
     change: -0.012,
     token: contracts.basketToken,
     tokenId: 1,

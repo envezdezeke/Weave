@@ -68,8 +68,8 @@ Phase A fixes things that are wrong; Phase B is the highest judging impact per h
 
 ## Open question for the team
 
-- [ ] Settle the "Cover" naming conflict (see `../design/DESIGN.md`, Vocabulary) before writing final copy.
-  Until then the app uses the vocabulary-safe names: "BTC/ETH Crash Hedge (15 min)", "Hedge 25% of it", and "Hedged on Gemini" for hedge coverage.
+- [x] Settle the "Cover" naming conflict (see `../design/DESIGN.md`, Vocabulary) before writing final copy.
+  Settled Nov 18: the basket is "BTC/ETH Crash Cover (15 min)" at 70/30 BTC/ETH; other copy keeps "Hedge 25% of it" and "Hedged on Gemini".
 
 ## Cut list if time runs short
 

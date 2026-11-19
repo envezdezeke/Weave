@@ -50,7 +50,7 @@ Where it says **[I]**, it is a design proposal, not something observed.
 
 ## Ground rules for every change
 
-- Never use the words insurance, policy, premium, claim, coverage, covered, bet, wager, odds, or win in user-facing copy (the team still has to settle "Crash Cover"; see `design/DESIGN.md`).
+- Never use the words insurance, policy, premium, claim, coverage, covered, bet, wager, odds, or win in user-facing copy (the one exception is the basket name "Crash Cover", settled on Nov 18; see `design/DESIGN.md`).
 - No sports or politics legs in any basket.
 - Testnet and Gemini sandbox only; no real money.
 - Never commit API keys; use `.env` (gitignored).

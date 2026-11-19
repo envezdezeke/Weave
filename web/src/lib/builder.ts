@@ -144,8 +144,8 @@ export function draftFromWorry(worry: string): Draft {
         {
           name: "Crypto Drop Hedge",
           legs: [
-            leg("btc-d-62500", 0.6, "Pays if BTC closes below $62,500 tomorrow at 4 PM CST."),
-            leg("eth-d-1760", 0.4, "Pays if ETH closes below $1,760 at the same time."),
+            leg("btc-d-62500", 0.7, "Pays if BTC closes below $62,500 tomorrow at 4 PM CST."),
+            leg("eth-d-1760", 0.3, "Pays if ETH closes below $1,760 at the same time."),
           ],
         },
       ],

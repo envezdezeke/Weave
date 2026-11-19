@@ -42,7 +42,7 @@ type State = {
 };
 
 export const WALLET = hex("weave-user-wallet", 40);
-const KEY = "weave-demo-v1";
+const KEY = "weave-demo-v2"; // bumped when seed baskets change
 const QUARTER = 15 * 60_000;
 const RESOLVE_LAG = 20_000; // Gemini posts a 15-minute result a few seconds after the window
 
@@ -62,7 +62,7 @@ function seed(now: number): State {
   const crash = (id: string, end: number, tokens: number, btc: LegState, eth: LegState): Position => ({
     id,
     basketId: CRASH_ID,
-    name: "BTC/ETH Crash Hedge (15 min)",
+    name: "BTC/ETH Crash Cover (15 min)",
     icon: "crash",
     kind: "crypto",
     tokens,

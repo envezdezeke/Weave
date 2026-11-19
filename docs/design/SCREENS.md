@@ -6,7 +6,7 @@ Rules that apply everywhere (tokens, numbers, vocabulary, disclosures) are in [`
 ## Baskets in scope (decisions Q4, Q5)
 
 - **BTC/ETH crash basket (15 min)**, the live demo: 2-3 BTC/ETH 15-minute downside legs (No on "above" strikes), resolved on camera, with a recorded backup take.
-  Team name is "BTC/ETH Crash Cover"; see the naming conflict in `DESIGN.md`.
+  Name: "BTC/ETH Crash Cover (15 min)", weighted 70% BTC / 30% ETH (decision Q17); see Vocabulary in `DESIGN.md`.
 - **Recession Hedge**: priced from production Gemini data, not resolvable before the deadline ("same mechanism, any horizon").
 - Plus AI-built baskets.
 
