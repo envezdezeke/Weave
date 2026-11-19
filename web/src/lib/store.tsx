@@ -42,9 +42,9 @@ type State = {
 };
 
 export const WALLET = hex("weave-user-wallet", 40);
-const KEY = "weave-demo-v2"; // bumped when seed baskets change
-const QUARTER = 15 * 60_000;
-const RESOLVE_LAG = 20_000; // Gemini posts a 15-minute result a few seconds after the window
+const KEY = "weave-demo-v3"; // bumped when seed baskets change
+const QUARTER = 60 * 60_000;
+const RESOLVE_LAG = 20_000; // Gemini posts an hourly result a few seconds after the window
 
 const coin = (seed: string) => parseInt(hex(seed, 8).slice(2), 16) % 2 === 0;
 
@@ -62,14 +62,14 @@ function seed(now: number): State {
   const crash = (id: string, end: number, tokens: number, btc: LegState, eth: LegState): Position => ({
     id,
     basketId: CRASH_ID,
-    name: "BTC/ETH Crash Cover (15 min)",
+    name: "BTC/ETH Crash Cover (1 hr)",
     icon: "crash",
     kind: "crypto",
     tokens,
     cost: Math.round(tokens * crashPrice * 100) / 100,
     price: crashPrice,
     legs: crashLegs(end),
-    results: { "btc-15m": { state: btc, at: end + RESOLVE_LAG }, "eth-15m": { state: eth, at: end + RESOLVE_LAG } },
+    results: { "btc-1h": { state: btc, at: end + RESOLVE_LAG }, "eth-1h": { state: eth, at: end + RESOLVE_LAG } },
     status: "open",
     hash: hex(id, 64),
     at: end - 9 * 60_000,
@@ -142,7 +142,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, [state]);
 
-  // Mock resolver: a 15-minute leg resolves shortly after its window ends.
+  // Mock resolver: an hourly leg resolves shortly after its window ends.
   useEffect(() => {
     const id = setInterval(() => {
       const now = Date.now();
@@ -308,7 +308,7 @@ export function findBasket(id: string, drafts: Record<string, Basket> = {}) {
   return baskets.find((b) => b.id === id) ?? drafts[id];
 }
 
-// Live clock for countdowns and 15-minute windows; null on the server.
+// Live clock for countdowns and hourly windows; null on the server.
 export function useNow(every = 1000) {
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => {

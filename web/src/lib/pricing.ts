@@ -31,8 +31,13 @@ export function mid(l: Leg) {
 
 export const fairValue = (legs: Leg[]) => legs.reduce((s, l) => s + l.weight * mid(l), 0);
 
+// A leg with no ask can't be bought for the hedge, so it is never priced at
+// mid (that would undersell the mint). It is marked at the $1 max payout as a
+// worst case for display, and mintable() blocks the buy.
+export const mintable = (legs: Leg[]) => legs.every((l) => quote(l).ask !== null);
+
 export const mintPrice = (legs: Leg[]) =>
-  legs.reduce((s, l) => s + l.weight * (quote(l).ask ?? mid(l)), 0) * (1 + FEE);
+  legs.reduce((s, l) => s + l.weight * (quote(l).ask ?? 1), 0) * (1 + FEE);
 
 export const lastExpiry = (legs: Leg[]) =>
   legs

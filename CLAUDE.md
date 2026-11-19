@@ -11,7 +11,7 @@ Core loop that must work end to end:
 6. Redeem USDC, pro-rata.
 Must also have:
 - USDC reserve with a live solvency gauge, plus a Gemini sandbox hedge with a hedge-coverage % (a failed hedge never blocks a mint).
-- 2 curated baskets: "Crash Cover" (70/30 BTC/ETH downside, 15-min, resolves on camera) and "Recession Hedge" (priced from production, unresolved).
+- 2 curated baskets: "Crash Cover" (70/30 BTC/ETH, NO on hourly "≥ $X" strikes just below spot, resolves on camera) and "Recession Hedge" (priced from production, unresolved).
 - Posted price with a staleness check; Circle wallet (90-min cap, then MetaMask); README with the economics, risks and contract addresses.
 Never:
 - Claim "first", "trustless", "bet" or "insurance".

@@ -98,7 +98,7 @@ Use Coinbase CDS role names as Tailwind CSS variables, since CDS is the only off
 | price, chance, resolves | bet, wager, odds, win, lose your stake, jackpot, "hits" |
 | "protection" sparingly | "cover", "Good cover", "You are covered" |
 
-Settled on Nov 18, 2026: the demo basket is named "BTC/ETH Crash Cover (15 min)", as the team's north-star checklist calls it.
+Settled on Nov 18, 2026: the demo basket is named "BTC/ETH Crash Cover (1 hr)", as the team's north-star checklist calls it.
 That name is the only exception to the Avoid column; elsewhere keep "hedge" ("Hedge 25% of it", "hedge $500 of a $2,000 loss") and "Hedged on Gemini" for hedge coverage.
 
 Explain the product in the order parametric products use (trigger, pre-agreed payment, speed), without their insurance words:

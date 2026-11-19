@@ -36,7 +36,7 @@ export type Basket = {
   icon: Icon;
   kind: Kind;
   badge: "Live" | "New" | "AI-built";
-  rolling?: boolean; // 15-minute legs that roll every window
+  rolling?: boolean; // hourly legs that roll every hour
   legs: Leg[];
   change: number; // price change over the chart range, dollars
   token: string; // ERC-1155 contract
@@ -61,21 +61,21 @@ export const explorer = {
   tx: (h: string) => `${contracts.explorer}/tx/${h}`,
 };
 
-export const CRASH_ID = "crash-15m";
+export const CRASH_ID = "crash-1h";
 
 export const baskets: Basket[] = [
   {
     id: CRASH_ID,
-    name: "BTC/ETH Crash Cover (15 min)",
-    tagline: "Pays if BTC or ETH falls in the next 15 minutes",
-    pitch: "Paid in crypto? Hedge a drop in the next 15 minutes.",
+    name: "BTC/ETH Crash Cover (1 hr)",
+    tagline: "Pays if BTC or ETH drops through a set price this hour",
+    pitch: "Paid in crypto? Hedge a drop before the top of the hour.",
     thesis:
-      "Two of Gemini's 15-minute crypto markets, held on the NO side of “price goes up”. Each leg pays its share if that coin ends the window lower than it started. A new window opens every quarter hour, so you can watch a basket resolve and pay out in one sitting.",
+      "Two of Gemini's hourly crypto price markets, held on the NO side of “$X or above” with the strike just below today's price. Each leg pays its share only if that coin ends the hour below its strike, a real drop rather than a coin flip. A new hour opens every hour, so you can watch a basket resolve and pay out in one sitting.",
     icon: "crash",
     kind: "crypto",
     badge: "Live",
     rolling: true,
-    legs: [leg("btc-15m", 0.7), leg("eth-15m", 0.3)], // decision Q17: demo persona is paid 70% BTC, 30% ETH
+    legs: [leg("btc-1h", 0.7), leg("eth-1h", 0.3)], // decision Q17: demo persona is paid 70% BTC, 30% ETH
     change: -0.012,
     token: contracts.basketToken,
     tokenId: 1,

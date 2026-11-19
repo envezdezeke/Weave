@@ -1,7 +1,7 @@
 // Gemini Prediction Markets legs. Order books, rule wording and settlement
 // sources are a snapshot of GET /v1/prediction-markets/events on
-// 2026-11-18 at about 4:40 PM CST. The 15-minute BTC/ETH legs roll every
-// window, so their symbol and expiry are filled in from the clock.
+// 2026-11-18 at about 4:40 PM CST. The hourly BTC/ETH strike legs roll every
+// hour, so their symbol and expiry are filled in from the clock.
 
 export type Side = "YES" | "NO";
 export type Category = "Crypto" | "Economy" | "Rates" | "Energy" | "Weather";
@@ -32,28 +32,31 @@ type Def = Omit<Leg, "weight" | "why">;
 const ROLLING = { expires: "", ticker: "", slug: "", symbol: "" };
 
 export const catalog = {
-  "btc-15m": {
-    id: "btc-15m",
-    short: "BTC falls",
-    title: "BTC price, 15-minute window",
-    contract: "Up",
+  // Hourly strike ladders, held on NO of "$X or above" with the strike just
+  // below spot, so a leg pays only on a real drop through a set price (the
+  // 15-minute markets are Up/Down only, which made each leg a coin flip).
+  "btc-1h": {
+    id: "btc-1h",
+    short: "BTC drops below $63,200",
+    title: "BTC price at the top of the hour",
+    contract: "$63,200 or above",
     side: "NO",
-    book: { bid: 0.5, ask: 0.51 },
+    book: { bid: 0.71, ask: 0.78 },
     category: "Crypto",
     ...ROLLING,
-    rule: "Resolves YES if the price of Bitcoin (BTC) at the end of the window is greater than or equal to its price at the start. Otherwise, it resolves to No. If no eligible trade occurs during the contract window, it resolves on the most recent traded price before it.",
+    rule: "Resolves YES if the price of Bitcoin (BTC) at expiry is $63,200 or above. Otherwise, it resolves to No.",
     source: "Lukka LS-LRRR-XBTUSD index",
   },
-  "eth-15m": {
-    id: "eth-15m",
-    short: "ETH falls",
-    title: "ETH price, 15-minute window",
-    contract: "Up",
+  "eth-1h": {
+    id: "eth-1h",
+    short: "ETH drops below $1,780",
+    title: "ETH price at the top of the hour",
+    contract: "$1,780 or above",
     side: "NO",
-    book: { bid: 0.5, ask: 0.51 },
+    book: { bid: 0.94, ask: 0.99 },
     category: "Crypto",
     ...ROLLING,
-    rule: "Resolves YES if the price of Ether (ETH) at the end of the window is greater than or equal to its price at the start. Otherwise, it resolves to No. If no eligible trade occurs during the contract window, it resolves on the most recent traded price before it.",
+    rule: "Resolves YES if the price of Ether (ETH) at expiry is $1,780 or above. Otherwise, it resolves to No.",
     source: "Lukka LS-LRRR-ETHUSD index",
   },
   recession: {
@@ -275,15 +278,15 @@ export const unpriced = [
   },
 ];
 
-// --- 15-minute windows -----------------------------------------------------
+// --- hourly windows -----------------------------------------------------
 
-const WINDOW_MS = 15 * 60_000;
-const CUTOFF_MS = 2 * 60_000; // buying closes 2 minutes before the window ends
+const WINDOW_MS = 60 * 60_000;
+const CUTOFF_MS = 5 * 60_000; // buying closes 5 minutes before the window ends
 
 export type Window = { start: number; end: number; buyBy: number };
 
-// The window a buyer can still get into: the current quarter hour, or the
-// next one during the last two minutes. Never later than that.
+// The window a buyer can still get into: the current hour, or the
+// next one during the last five minutes. Never later than that.
 export function crashWindow(now: number): Window {
   let start = Math.floor(now / WINDOW_MS) * WINDOW_MS;
   if (now >= start + WINDOW_MS - CUTOFF_MS) start += WINDOW_MS;
@@ -296,7 +299,7 @@ export function windowAt(end: number): Window {
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-// Gemini tickers use the UTC expiry, e.g. BTC15M2611182315.
+// Gemini tickers use the UTC expiry, e.g. BTC2611190500.
 function stamp(ms: number) {
   const d = new Date(ms);
   return `${String(d.getUTCFullYear()).slice(2)}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}`;
@@ -313,14 +316,15 @@ function etClock(ms: number) {
 }
 
 export function inWindow(l: Leg, w: Window): Leg {
-  if (l.id !== "btc-15m" && l.id !== "eth-15m") return l;
-  const asset = l.id === "btc-15m" ? "BTC" : "ETH";
-  const ticker = `${asset}15M${stamp(w.end)}`;
+  if (l.id !== "btc-1h" && l.id !== "eth-1h") return l;
+  const asset = l.id === "btc-1h" ? "BTC" : "ETH";
+  const ticker = `${asset}${stamp(w.end)}`;
+  const strike = l.contract.replace(/[^0-9]/g, "");
   return {
     ...l,
     expires: new Date(w.end).toISOString(),
     ticker,
     slug: `${asset.toLowerCase()}-price-today-at-${etClock(w.end)}-est`,
-    symbol: `GEMI-${ticker}-UP`,
+    symbol: `GEMI-${ticker}-HI${strike}`,
   };
 }

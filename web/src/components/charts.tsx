@@ -16,7 +16,7 @@ function toPath(values: number[], w: number, h: number, pad = 2) {
 }
 
 export const RANGE_LABEL: Record<string, string> = {
-  "15M": "this window",
+  "1H": "this hour",
   "1D": "past day",
   "1W": "past week",
   "1M": "past month",

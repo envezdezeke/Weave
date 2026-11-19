@@ -27,7 +27,7 @@ export function FeaturedBasket({ basket: base }: { basket: Basket }) {
             <span className="absolute inline-flex size-full animate-ping rounded-full bg-brand opacity-60 motion-reduce:animate-none" />
             <span className="relative inline-flex size-1.5 rounded-full bg-brand" />
           </span>
-          Live · resolves every 15 minutes
+          Live · resolves every hour
         </Chip>
       </div>
       <p className="mt-5 text-lg font-semibold tracking-tight">{basket.pitch}</p>

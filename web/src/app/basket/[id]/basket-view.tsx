@@ -39,7 +39,7 @@ export function BasketView({ basket: base }: { basket: Basket }) {
   const series = useMemo(
     (): Record<string, number[]> =>
       basket.rolling
-        ? { "15M": history(`${basket.id}${window?.end ?? 0}`, value, basket.change, 60) }
+        ? { "1H": history(`${basket.id}${window?.end ?? 0}`, value, basket.change, 60) }
         : {
             "1D": history(`${basket.id}d`, value, basket.change * 0.5, 60),
             "1W": history(`${basket.id}w`, value, basket.change, 70),
@@ -48,7 +48,7 @@ export function BasketView({ basket: base }: { basket: Basket }) {
           },
     [basket.id, basket.rolling, basket.change, value, window?.end],
   );
-  const initial = basket.rolling ? "15M" : "1W";
+  const initial = basket.rolling ? "1H" : "1W";
   const range = hover?.range ?? initial;
   const shown = hover?.value ?? value;
   const start = hover?.start ?? series[initial][0];

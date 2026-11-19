@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import { explorer, type Basket } from "@/lib/data";
 import { clock, dateTime, day, qty, short, tokenUsd, usd } from "@/lib/format";
 import type { Window } from "@/lib/markets";
-import { FEE, mintPrice, NETWORK_FEE, outcomes, quote, sizeFromCost, sizeHedge } from "@/lib/pricing";
+import { FEE, mintPrice, mintable, NETWORK_FEE, outcomes, quote, sizeFromCost, sizeHedge } from "@/lib/pricing";
 import { useStore } from "@/lib/store";
 import { Check, Spinner } from "./icons";
 import { Disclosure, ExtLink, Row } from "./ui";
@@ -36,7 +36,7 @@ export function BuyPanel({ basket, window: w, ends, now }: { basket: Basket; win
   const sized = mode === "risk" ? sizeHedge(Number(atRisk) || 0, share / 100, price) : sizeFromCost(Number(spend) || 0, price);
   const balance = store?.balance ?? 0;
   const total = sized.cost + NETWORK_FEE;
-  const closed = basket.rolling && (!w || !now || now >= w.buyBy);
+  const closed = !mintable(basket.legs) || (basket.rolling && (!w || !now || now >= w.buyBy));
   const noAsk = basket.legs.some((l) => quote(l).ask === null);
   const endsLabel = !ends ? "–" : basket.rolling ? dateTime(ends) : day(ends);
 
