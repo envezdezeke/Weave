@@ -137,3 +137,75 @@ body {
     animation: none;
   }
 }
+
+/* Worry tints (soft backgrounds) and inks (icons, labels): one per kind of risk.
+   Green and red stay reserved for gains and losses. */
+:root,
+[data-theme="light"] {
+  --tint-crypto: #ece8ff;
+  --ink-crypto: #5a43dc;
+  --tint-economy: #fbefd8;
+  --ink-economy: #8f5d00;
+  --tint-weather: #fde6de;
+  --ink-weather: #b24c2c;
+  --tint-rates: #e1edfb;
+  --ink-rates: #2c6aa8;
+  --tint-energy: #ecebe6;
+  --ink-energy: #5c574b;
+}
+
+[data-theme="dark"] {
+  --tint-crypto: #262046;
+  --ink-crypto: #a597ff;
+  --tint-economy: #33280f;
+  --ink-economy: #e9b95e;
+  --tint-weather: #3a1e17;
+  --ink-weather: #f29a7c;
+  --tint-rates: #142a43;
+  --ink-rates: #7cb4ec;
+  --tint-energy: #2a2924;
+  --ink-energy: #cbc4b4;
+}
+
+/* Threads draw in, one after another (AI builder "weaving"). */
+@keyframes weave-draw {
+  from {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+  }
+}
+
+.weave-draw path {
+  animation: weave-draw 0.9s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.weave-draw rect {
+  animation: fade 0.4s 0.8s ease-out both;
+}
+
+@keyframes stamp {
+  from {
+    opacity: 0;
+    transform: rotate(-4deg) scale(1.4);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(-4deg) scale(1);
+  }
+}
+
+.stamp {
+  animation: stamp 0.25s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .weave-draw path,
+  .weave-draw rect,
+  .stamp {
+    animation: none;
+  }
+}

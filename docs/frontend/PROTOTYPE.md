@@ -27,12 +27,13 @@ Next 16 differs from older versions: read `web/AGENTS.md` and `web/node_modules/
 | `web/src/app/basket/[id]/basket-view.tsx` | Basket detail: clocks, expected payout, three-number strip, chart, legs, How it pays, Backing, Onchain, Who decides, Hedge record, Good to know, buy rail or mobile sheet |
 | `web/src/app/build/builder.tsx` | AI builder: tool-call cards, match badge, options, refine chips, gap note, near misses, "Markets we wish existed" |
 | `web/src/app/build/review/` | Basket detail for an AI-built draft ("AI-built" badge) |
-| `web/src/app/portfolio/page.tsx` | Portfolio: Cash and Portfolio chips, redeem banner, position states, per-leg chips and evidence, Redeem, Send (ERC-1155) |
+| `web/src/app/portfolio/page.tsx` | Portfolio: Cash and Portfolio chips, redeem banner, position states, the resolve moment (legs flip in turn, payout counts up, Settled stamp; "Replay settlement" for a backup take), per-leg chips and evidence, Redeem, Send (ERC-1155) |
 | `web/src/components/buy-panel.tsx` | Buy ticket: amount at risk plus 10-100% slider, "Enter cost instead" with +$1/+$5/+$10/Max, scenarios, receipt review, transaction states |
-| `web/src/components/basket.tsx` | Shared basket pieces: card, three numbers, leg list, How it pays, backing and solvency gauges, who decides, hedge record |
+| `web/src/components/basket.tsx` | Shared basket pieces: worry-tinted card, three numbers, leg list, How it pays as a what-if switchboard (tap events, payout fills, combo comparison), backing and solvency gauges, who decides, hedge record |
 | `web/src/components/featured.tsx` | Featured 15-minute basket with Buy by and Resolves clocks |
 | `web/src/components/nav.tsx` | Header, theme toggle, Account sheet, mobile tab bar, test-mode bar |
 | `web/src/components/ui.tsx` | Weight bar, chips, address with copy and explorer, sheet, disclosure line |
+| `web/src/components/weave.tsx` | `Weave`: legs drawn as threads (thickness = weight) braiding into one strand; used on the featured card, basket detail (hover a leg to trace it) and the AI builder's weaving progress |
 | `web/src/components/charts.tsx` | `PriceChart` (crosshair by pointer or arrow keys, range chips), `ChanceBar` |
 | `web/src/lib/markets.ts` | Gemini legs (books, rule wording, sources, links) and the 15-minute window logic |
 | `web/src/lib/pricing.ts` | Team pricing model: quote, mid, illiquid, fair value, mint price (+2%), outcomes, hedge sizing; pure, ready for `packages/core` |
@@ -50,6 +51,11 @@ Next 16 differs from older versions: read `web/AGENTS.md` and `web/node_modules/
   The mock resolver settles a 15-minute position 20 seconds after its window ends, with a seeded coin flip.
 - The Account sheet has "Reset demo data" to return to the seed state.
 
+## Design signatures (picked Nov 18, 2026)
+
+Clean base plus four signatures: woven threads, the what-if switchboard, the resolve moment, and worry colors (`--tint-*` and `--ink-*` per basket `kind` in `globals.css`; green and red stay for gains and losses).
+The options that were compared are in the local `.lavish/` folder (gitignored).
+
 ## Demo switches
 
 Append these to a basket URL to show states a normal run never reaches:
@@ -65,6 +71,10 @@ Append these to a basket URL to show states a normal run never reaches:
 - Fetch live Gemini prices for the legs, and the hedge record from the operator API.
 - Move `lib/pricing.ts` and the `Leg` type into `packages/core` once it exists.
 - Confirm the contract's admin roles, then update the limits line on the Backing card.
+
+## Known issue
+
+- The dev server sometimes keeps serving an old `globals.css` after edits (seen twice on Nov 18). Stop it, delete `web/.next/dev`, and start it again.
 
 ## Verification so far
 

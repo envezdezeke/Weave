@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PriceChart, RANGE_LABEL, type Hover } from "@/components/charts";
 import { BasketIcon, Check, Spinner } from "@/components/icons";
-import { Chip, ExtLink, Row, Sheet } from "@/components/ui";
+import { Chip, ExtLink, Row, Sheet, tint } from "@/components/ui";
 import { explorer } from "@/lib/data";
 import { arrowPct, clock, dateTime, history, qty, short, signedUsd, usd } from "@/lib/format";
 import { geminiUrl, type Leg } from "@/lib/markets";
@@ -176,6 +176,45 @@ function PositionCard({ p, now, onRedeemed, onSend }: { p: Position; now: number
   const tone = s.key === "ready" ? "positive" : s.key === "confirming" || s.key === "closing" || s.key === "waiting" ? "brand" : s.key === "review" ? "warning" : "neutral";
   const canSend = p.status === "open" && !p.redeemed && p.tokens > 0 && s.key !== "ended";
   const href = b ? (b.badge === "AI-built" ? `/build/review?id=${b.id}` : `/basket/${b.id}`) : null;
+  const kind = p.kind ?? b?.kind ?? "crypto";
+
+  // The resolve moment: when Gemini settles the last leg while you watch, the
+  // legs flip one by one, the payout counts up, and a stamp lands.
+  const [reveal, setReveal] = useState<number | null>(null);
+  const [counter, setCounter] = useState<number | null>(null);
+  const [stamped, setStamped] = useState(false);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const prevResolved = useRef(s.resolved);
+  const total = s.total;
+  const amount = s.amount;
+
+  const play = useCallback(() => {
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
+    const later = (ms: number, fn: () => void) => timers.current.push(setTimeout(fn, ms));
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      later(0, () => setStamped(true));
+      return;
+    }
+    setStamped(false);
+    setReveal(0);
+    for (let i = 1; i <= total; i++) later(i * 750, () => setReveal(i));
+    const start = total * 750 + 250;
+    const frames = 18;
+    for (let f = 1; f <= frames; f++) later(start + f * 40, () => setCounter((amount * f) / frames));
+    later(start + frames * 40 + 150, () => {
+      setReveal(null);
+      setCounter(null);
+      setStamped(true);
+    });
+  }, [total, amount]);
+
+  useEffect(() => {
+    if (s.resolved > prevResolved.current && s.resolved === total) timers.current.push(setTimeout(play, 0));
+    prevResolved.current = s.resolved;
+  }, [s.resolved, total, play]);
+
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
   const redeem = () => {
     setRedeeming("submitting");
@@ -188,9 +227,9 @@ function PositionCard({ p, now, onRedeemed, onSend }: { p: Position; now: number
   };
 
   return (
-    <li id={`pos-${p.id}`} className="scroll-mt-28 rounded-2xl border border-line p-4">
+    <li id={`pos-${p.id}`} className="scroll-mt-28 rounded-3xl border border-line p-4" style={tint(kind)}>
       <div className="flex items-start gap-3">
-        <BasketIcon icon={p.icon} />
+        <BasketIcon icon={p.icon} kind={kind} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             {href ? (
@@ -200,10 +239,22 @@ function PositionCard({ p, now, onRedeemed, onSend }: { p: Position; now: number
             ) : (
               <span className="font-medium">{p.name}</span>
             )}
-            <Chip tone={tone}>
-              {s.key === "confirming" && <Spinner className="size-3" />}
-              {s.label}
-            </Chip>
+            {reveal !== null ? (
+              <Chip tone="brand">Gemini is settling…</Chip>
+            ) : stamped && (s.key === "ready" || s.key === "ended") ? (
+              <span
+                className={`stamp num inline-block rounded-md border-2 px-2 py-0.5 text-xs font-semibold ${
+                  s.key === "ready" ? "border-fg-positive text-fg-positive" : "border-line-heavy text-fg-muted"
+                }`}
+              >
+                {s.key === "ready" ? `Settled · ${usd(s.amount)} to redeem` : "Settled · $0.00"}
+              </span>
+            ) : (
+              <Chip tone={tone}>
+                {s.key === "confirming" && <Spinner className="size-3" />}
+                {s.label}
+              </Chip>
+            )}
           </div>
           <div className="num mt-0.5 text-sm text-fg-muted">
             {qty(p.tokens)} tokens · paid {usd(p.cost)}
@@ -211,8 +262,10 @@ function PositionCard({ p, now, onRedeemed, onSend }: { p: Position; now: number
           </div>
         </div>
         <div className="shrink-0 text-right">
-          <div className="num font-semibold">{usd(s.key === "redeemed" ? (p.redeemed?.amount ?? 0) : value)}</div>
-          {s.key !== "confirming" && (
+          <div className="num font-semibold">
+            {counter !== null ? usd(counter) : reveal !== null ? usd(0) : usd(s.key === "redeemed" ? (p.redeemed?.amount ?? 0) : value)}
+          </div>
+          {s.key !== "confirming" && reveal === null && counter === null && (
             <div className={`num text-sm ${pnl >= 0 ? "text-fg-positive" : "text-fg-negative"}`}>
               {pnl >= 0 ? "▲" : "▼"} {signedUsd(pnl)}
             </div>
@@ -220,17 +273,31 @@ function PositionCard({ p, now, onRedeemed, onSend }: { p: Position; now: number
         </div>
       </div>
 
+      {p.windowEnd && (
+        <div className="mt-3 flex gap-1" aria-hidden>
+          {p.legs.map((l, i) => {
+            const done = reveal !== null ? i < reveal : p.results[l.id]?.state !== "open";
+            return <span key={l.id} className={`h-1 flex-1 rounded-full transition-colors duration-300 ${done ? "bg-fg" : "bg-bg-elev-2"}`} />;
+          })}
+        </div>
+      )}
       <ul className="mt-3 space-y-2 border-t border-line pt-3">
-        {p.legs.map((l) => {
-          const r = p.results[l.id] ?? { state: "open" as const };
-          const chip = LEG_CHIP[r.state];
+        {p.legs.map((l, i) => {
+          const actual = p.results[l.id] ?? { state: "open" as const };
+          const hidden = reveal !== null && i >= reveal;
+          const r = hidden ? { state: "open" as const, at: undefined } : actual;
+          const waiting = r.state === "open" && (hidden || (!!l.expires && new Date(l.expires).getTime() <= now));
+          const chip = waiting ? { tone: "brand" as const, label: "Waiting for Gemini" } : LEG_CHIP[r.state];
           return (
             <li key={l.id}>
               <div className="flex items-center justify-between gap-3 text-sm">
                 <span className="min-w-0 truncate">
                   {l.short} <span className="num text-fg-muted">· weight {Math.round(l.weight * 100)}% · pays {usd(l.weight * p.tokens)}</span>
                 </span>
-                <Chip tone={chip.tone}>{chip.label}</Chip>
+                <Chip tone={chip.tone} className={hidden || waiting ? "" : reveal !== null ? "rise" : ""}>
+                  {waiting && <span className="size-1.5 animate-pulse rounded-full bg-current motion-reduce:animate-none" />}
+                  {chip.label}
+                </Chip>
               </div>
               <Evidence l={l} state={r.state} at={r.at} />
             </li>
@@ -265,6 +332,11 @@ function PositionCard({ p, now, onRedeemed, onSend }: { p: Position; now: number
         {canSend && (
           <button type="button" onClick={onSend} className="rounded-full border border-line px-4 py-2 text-sm font-medium hover:bg-bg-elev-2">
             Send
+          </button>
+        )}
+        {p.windowEnd && s.resolved === s.total && s.key !== "confirming" && (
+          <button type="button" onClick={play} className="text-xs font-medium text-fg-muted hover:text-fg">
+            Replay settlement
           </button>
         )}
         <span className="ml-auto text-xs text-fg-muted">

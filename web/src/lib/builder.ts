@@ -2,7 +2,7 @@
 // the full Gemini catalog through tool calls; here keyword rules stand in for
 // it, and the UI shows the same steps and match rating.
 
-import { CRASH_ID } from "./data";
+import { CRASH_ID, type Icon, type Kind } from "./data";
 import { leg, unpriced, type Leg } from "./markets";
 import { mintPrice } from "./pricing";
 
@@ -10,9 +10,12 @@ export type Match = "strong" | "partial" | "none";
 
 export type Option = { name: string; legs: Leg[] };
 
+export const KIND_ICON: Record<Kind, Icon> = { crypto: "crash", economy: "recession", weather: "sun", rates: "rates", energy: "oil" };
+
 export type NearMiss = { title: string; contract: string; ticker: string; slug: string; reason: string };
 
 export type Draft = {
+  kind: Kind;
   match: Match;
   options: Option[];
   gap?: string; // what is not hedged
@@ -33,6 +36,7 @@ export function draftFromWorry(worry: string): Draft {
 
   if (/laid off|layoff|lay off|fired|job|unemploy|career|income/.test(w)) {
     return {
+      kind: "economy",
       match: "partial",
       options: [
         {
@@ -58,6 +62,7 @@ export function draftFromWorry(worry: string): Draft {
 
   if (/gas|oil|fuel|commute|drive|petrol|heating|diesel/.test(w)) {
     return {
+      kind: "energy",
       match: "partial",
       options: [
         {
@@ -83,6 +88,7 @@ export function draftFromWorry(worry: string): Draft {
 
   if (/heat|hot|temperature|weather|warm/.test(w)) {
     return {
+      kind: "weather",
       match: "partial",
       options: [
         {
@@ -108,6 +114,7 @@ export function draftFromWorry(worry: string): Draft {
 
   if (/rate|mortgage|loan|fed|interest|borrow|credit/.test(w)) {
     return {
+      kind: "rates",
       match: "strong",
       options: [
         {
@@ -131,6 +138,7 @@ export function draftFromWorry(worry: string): Draft {
 
   if (/crypto|bitcoin|btc|eth|ether|paid in|coin|wallet/.test(w)) {
     return {
+      kind: "crypto",
       match: "strong",
       options: [
         {
@@ -148,6 +156,7 @@ export function draftFromWorry(worry: string): Draft {
 
   if (/recession|economy|downturn|stock|market|crash|s&p|401k|savings/.test(w)) {
     return {
+      kind: "economy",
       match: "strong",
       options: [
         {
@@ -165,6 +174,7 @@ export function draftFromWorry(worry: string): Draft {
   }
 
   return {
+    kind: "economy",
     match: "none",
     options: [],
     gap: "No Gemini market tracks this, so there is no honest hedge for it yet.",

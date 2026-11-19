@@ -9,7 +9,7 @@ import { fairValue, illiquid, lastExpiry, mid, mintPrice, outcomes, payoutFor, q
 import { useCrashWindow, useStore } from "@/lib/store";
 import { ChanceBar } from "./charts";
 import { BasketIcon } from "./icons";
-import { Address, Card, Chip, ExtLink, LegDot, Row, SideChip, WeightBar } from "./ui";
+import { Address, Card, Chip, ExtLink, KindLabel, LegDot, Row, SideChip, tint, WeightBar } from "./ui";
 
 // Fills rolling legs from the clock. Before mount there is no clock, so
 // times render as placeholders and nothing shows a stale window.
@@ -46,14 +46,14 @@ export function BasketCard({ basket: base }: { basket: Basket }) {
   return (
     <Link
       href={`/basket/${basket.id}`}
-      className="group flex flex-col gap-5 rounded-2xl border border-line bg-bg-elev-1 p-5 transition-colors hover:border-line-heavy"
+      style={tint(basket.kind)}
+      className="group flex flex-col gap-5 rounded-3xl border border-line p-5 transition-colors hover:border-line-heavy"
     >
       <div className="flex items-start gap-3">
-        <BasketIcon icon={basket.icon} />
+        <BasketIcon icon={basket.icon} kind={basket.kind} />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h3 className="truncate font-semibold tracking-tight">{basket.name}</h3>
-          </div>
+          <KindLabel kind={basket.kind} />
+          <h3 className="truncate font-semibold tracking-tight">{basket.name}</h3>
           <p className="truncate text-sm text-fg-muted">{basket.tagline}</p>
         </div>
         <Chip tone={basket.badge === "Live" ? "brand" : "neutral"}>{basket.badge}</Chip>
@@ -110,14 +110,32 @@ export function ThreeNumbers({ price, ends, compact = false }: { price: number; 
   );
 }
 
-export function LegList({ legs, showWhy = false, detail = false }: { legs: Leg[]; showWhy?: boolean; detail?: boolean }) {
+export function LegList({
+  legs,
+  showWhy = false,
+  detail = false,
+  onActive,
+}: {
+  legs: Leg[];
+  showWhy?: boolean;
+  detail?: boolean;
+  onActive?: (i: number | null) => void;
+}) {
   return (
     <ul className="divide-y divide-line">
       {legs.map((l, i) => {
         const m = mid(l);
         const q = quote(l);
         return (
-          <li key={l.id} id={`leg-${l.id}`} className="scroll-mt-28 py-4">
+          <li
+            key={l.id}
+            id={`leg-${l.id}`}
+            className="scroll-mt-28 py-4"
+            onMouseEnter={() => onActive?.(i)}
+            onMouseLeave={() => onActive?.(null)}
+            onFocus={() => onActive?.(i)}
+            onBlur={() => onActive?.(null)}
+          >
             <div className="flex items-start gap-3">
               <span className="mt-1.5">
                 <LegDot i={i} />
@@ -172,61 +190,99 @@ export function ComboLine() {
   );
 }
 
-// Named rows up to 3 legs; per-leg toggles above that.
-export function HowItPays({ legs, scale = 1, title = "How it pays", unit = "per token" }: { legs: Leg[]; scale?: number; title?: string; unit?: string }) {
-  const [on, setOn] = useState<Set<string>>(new Set());
-  if (legs.length > 3) {
-    const value = payoutFor(legs, on) * scale;
-    return (
-      <div>
+// The what-if switchboard: tap the events that happen and watch the payout
+// fill, next to what the same legs would pay as an all-or-nothing combo.
+// Every scenario is still listed underneath for up to 3 legs.
+export function HowItPays({
+  legs,
+  scale = 1,
+  title = "How it pays",
+  unit = "per token",
+  compact = false,
+}: {
+  legs: Leg[];
+  scale?: number;
+  title?: string;
+  unit?: string;
+  compact?: boolean;
+}) {
+  const [on, setOn] = useState<Set<string>>(() => new Set(legs.slice(0, 1).map((l) => l.id)));
+  const value = payoutFor(legs, on) * scale;
+  const all = on.size === legs.length;
+  const toggle = (id: string) =>
+    setOn((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-3">
         <h3 className="font-semibold">{title}</h3>
-        <p className="mt-1 text-sm text-fg-muted">Mark the events that happen.</p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {legs.map((l, i) => (
+        <span className="text-xs text-fg-muted">Tap what happens</span>
+      </div>
+      <div className="mt-3 grid gap-2">
+        {legs.map((l, i) => {
+          const pressed = on.has(l.id);
+          return (
             <button
               key={l.id}
               type="button"
-              aria-pressed={on.has(l.id)}
-              onClick={() => setOn((s) => {
-                const n = new Set(s);
-                if (n.has(l.id)) n.delete(l.id);
-                else n.add(l.id);
-                return n;
-              })}
-              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${on.has(l.id) ? "border-fg bg-fg text-bg" : "border-line hover:border-line-heavy"}`}
+              aria-pressed={pressed}
+              onClick={() => toggle(l.id)}
+              className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors ${
+                pressed ? "border-fg bg-bg-alt" : "border-line hover:border-line-heavy"
+              }`}
             >
-              <LegDot i={i} /> {l.short}
+              <span
+                className={`grid size-5 shrink-0 place-items-center rounded-md border text-[11px] ${pressed ? "border-fg bg-fg text-bg" : "border-line-heavy"}`}
+                aria-hidden
+              >
+                {pressed ? "✓" : ""}
+              </span>
+              <LegDot i={i} />
+              <span className="min-w-0 flex-1 truncate">{l.short}</span>
+              <span className="num shrink-0 text-xs text-fg-muted">pays {usd(l.weight * scale)}</span>
             </button>
-          ))}
-        </div>
-        <p className="num mt-4 text-sm">
-          You&apos;d receive <span className="text-xl font-semibold">{usd(value)}</span> {unit}
-        </p>
+          );
+        })}
       </div>
-    );
-  }
-  const rows = outcomes(legs);
-  return (
-    <div>
-      <h3 className="font-semibold">{title}</h3>
-      <table className="num mt-3 w-full text-sm">
-        <tbody className="divide-y divide-line">
-          {rows.map((o) => (
-            <tr key={o.label}>
-              <td className="py-2 pr-4">
-                <span className="mr-2 inline-flex gap-0.5 align-middle">
-                  {legs.map((l, i) => (
-                    <span key={l.id} className={`size-2 rounded-full ${o.ids.includes(l.id) ? ["bg-leg-1", "bg-leg-2", "bg-leg-3"][i] : "bg-bg-elev-2"}`} />
-                  ))}
-                </span>
-                {o.label}
-              </td>
-              <td className="py-2 text-right font-semibold">{usd(o.payout * scale)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p className="mt-2 text-xs text-fg-muted">Amounts {unit}. Scenarios, not chances: legs can move together.</p>
+      <div className="mt-4 flex h-2.5 overflow-hidden rounded-full bg-bg-elev-2" aria-hidden>
+        {legs.map((l, i) => (
+          <span
+            key={l.id}
+            className={`${["bg-leg-1", "bg-leg-2", "bg-leg-3", "bg-leg-4"][i % 4]} h-full transition-[width] duration-300 motion-reduce:transition-none`}
+            style={{ width: on.has(l.id) ? `${l.weight * 100}%` : 0 }}
+          />
+        ))}
+      </div>
+      <div className="mt-3 flex items-baseline justify-between gap-3" aria-live="polite">
+        <span className="text-sm text-fg-muted">Weave pays you</span>
+        <span className="num text-3xl font-semibold tracking-tight">
+          {usd(value)} <span className="text-sm font-normal text-fg-muted">{unit}</span>
+        </span>
+      </div>
+      <p className="num mt-1 text-right text-xs text-fg-muted">
+        {all ? "A combo of the same legs would pay too, only because every leg happened." : "The same legs as a combo would pay $0.00: combos need every leg."}
+      </p>
+      {!compact && legs.length <= 3 && (
+        <details className="mt-4 border-t border-line pt-3 text-sm">
+          <summary className="cursor-pointer text-fg-muted hover:text-fg">Every scenario</summary>
+          <table className="num mt-2 w-full">
+            <tbody className="divide-y divide-line">
+              {outcomes(legs).map((o) => (
+                <tr key={o.label}>
+                  <td className="py-1.5 pr-4">{o.label}</td>
+                  <td className="py-1.5 text-right font-semibold">{usd(o.payout * scale)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-2 text-xs text-fg-muted">Scenarios, not chances: legs can move together.</p>
+        </details>
+      )}
     </div>
   );
 }

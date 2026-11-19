@@ -1,10 +1,31 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { explorer } from "@/lib/data";
+import { explorer, type Kind } from "@/lib/data";
 import { pct, short } from "@/lib/format";
 import type { Leg } from "@/lib/markets";
 import { CopyIcon, ExternalIcon } from "./icons";
+
+export const KIND_LABEL: Record<Kind, string> = {
+  crypto: "Crypto",
+  economy: "Economy",
+  weather: "Weather",
+  rates: "Rates",
+  energy: "Energy",
+};
+
+// Soft wash from the worry's tint into the card color, top-left to bottom-right.
+export const tint = (kind: Kind, to = "var(--bg-elev-1)") => ({
+  background: `linear-gradient(155deg, var(--tint-${kind}), ${to} 62%)`,
+});
+
+export function KindLabel({ kind }: { kind: Kind }) {
+  return (
+    <span className="text-xs font-medium" style={{ color: `var(--ink-${kind})` }}>
+      {KIND_LABEL[kind]}
+    </span>
+  );
+}
 
 export const LEG_COLORS = ["bg-leg-1", "bg-leg-2", "bg-leg-3", "bg-leg-4"];
 

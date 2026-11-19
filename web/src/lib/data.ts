@@ -7,6 +7,9 @@ import { leg, type Leg } from "./markets";
 
 export type Icon = "crash" | "recession" | "rates" | "oil" | "sun" | "spark";
 
+// The kind of risk a basket hedges; drives its tint (decision: worry colors).
+export type Kind = "crypto" | "economy" | "weather" | "rates" | "energy";
+
 export type HedgeFill = {
   legId: string;
   short: string;
@@ -31,6 +34,7 @@ export type Basket = {
   pitch: string; // one line for the persona
   thesis: string;
   icon: Icon;
+  kind: Kind;
   badge: "Live" | "New" | "AI-built";
   rolling?: boolean; // 15-minute legs that roll every window
   legs: Leg[];
@@ -68,6 +72,7 @@ export const baskets: Basket[] = [
     thesis:
       "Two of Gemini's 15-minute crypto markets, held on the NO side of “price goes up”. Each leg pays its share if that coin ends the window lower than it started. A new window opens every quarter hour, so you can watch a basket resolve and pay out in one sitting.",
     icon: "crash",
+    kind: "crypto",
     badge: "Live",
     rolling: true,
     legs: [leg("btc-15m", 0.6), leg("eth-15m", 0.4)],
@@ -84,6 +89,7 @@ export const baskets: Basket[] = [
     thesis:
       "Three unlikely economic events in one token. Each costs a few cents on its own, so the basket is cheap, and each pays its share if it happens.",
     icon: "recession",
+    kind: "economy",
     badge: "New",
     legs: [leg("recession", 0.35), leg("spx-6300", 0.35), leg("unemp-7", 0.3)],
     change: 0.006,

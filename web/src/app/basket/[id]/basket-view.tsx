@@ -20,9 +20,10 @@ import {
 import { BuyPanel } from "@/components/buy-panel";
 import { PriceChart, RANGE_LABEL, type Hover } from "@/components/charts";
 import { BasketIcon } from "@/components/icons";
-import { Chip, WeightBar } from "@/components/ui";
+import { Chip, KindLabel, LegDot, tint } from "@/components/ui";
+import { Weave } from "@/components/weave";
 import { hedgeCoverage, type Basket } from "@/lib/data";
-import { arrowPct, clock, day, history, signedUsd, tokenUsd } from "@/lib/format";
+import { arrowPct, clock, day, history, pct, signedUsd, tokenUsd } from "@/lib/format";
 import { fairValue, mintPrice } from "@/lib/pricing";
 
 export function BasketView({ basket: base }: { basket: Basket }) {
@@ -31,6 +32,7 @@ export function BasketView({ basket: base }: { basket: Basket }) {
   const price = mintPrice(basket.legs);
   const [hover, setHover] = useState<Hover>(null);
   const [sheet, setSheet] = useState(false);
+  const [activeLeg, setActiveLeg] = useState<number | null>(null);
   const v = useVault(basket, window);
   const ai = basket.badge === "AI-built";
 
@@ -61,9 +63,10 @@ export function BasketView({ basket: base }: { basket: Basket }) {
 
       <div className="mt-5 grid grid-cols-1 gap-10 lg:grid-cols-[1fr_380px]">
         <div className="min-w-0">
-          <div className="flex items-start gap-3">
-            <BasketIcon icon={basket.icon} size={48} />
+          <div className="flex items-start gap-3 rounded-3xl border border-line p-5" style={tint(basket.kind, "var(--bg)")}>
+            <BasketIcon icon={basket.icon} kind={basket.kind} size={48} />
             <div className="min-w-0">
+              <KindLabel kind={basket.kind} />
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{basket.name}</h1>
                 <Chip tone={basket.badge === "Live" || ai ? "brand" : "neutral"}>{basket.badge}</Chip>
@@ -111,8 +114,25 @@ export function BasketView({ basket: base }: { basket: Basket }) {
           <section className="mt-10">
             <h2 className="text-lg font-semibold">What&apos;s inside</h2>
             <p className="mt-1 text-sm text-fg-muted">{basket.thesis}</p>
-            <WeightBar legs={basket.legs} link className="mt-4" />
-            <LegList legs={basket.legs} detail showWhy={ai} />
+            <div className="mt-4 rounded-2xl border border-line px-4 pb-3 pt-4">
+              <Weave legs={basket.legs} height={110} active={activeLeg} />
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                {basket.legs.map((l, i) => (
+                  <a
+                    key={l.id}
+                    href={`#leg-${l.id}`}
+                    onMouseEnter={() => setActiveLeg(i)}
+                    onMouseLeave={() => setActiveLeg(null)}
+                    onFocus={() => setActiveLeg(i)}
+                    onBlur={() => setActiveLeg(null)}
+                    className="num inline-flex items-center gap-1.5 text-fg-muted hover:text-fg"
+                  >
+                    <LegDot i={i} /> {l.short} {pct(l.weight)}
+                  </a>
+                ))}
+              </div>
+            </div>
+            <LegList legs={basket.legs} detail showWhy={ai} onActive={setActiveLeg} />
             <ComboLine />
           </section>
 

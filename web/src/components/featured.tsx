@@ -7,7 +7,8 @@ import { mid, mintPrice, outcomes } from "@/lib/pricing";
 import { Clocks, useLiveBasket } from "./basket";
 import { ChanceBar } from "./charts";
 import { BasketIcon } from "./icons";
-import { Chip, LegDot, WeightBar } from "./ui";
+import { Chip, LegDot, tint } from "./ui";
+import { Weave } from "./weave";
 
 export function FeaturedBasket({ basket: base }: { basket: Basket }) {
   const { basket, window } = useLiveBasket(base);
@@ -17,7 +18,8 @@ export function FeaturedBasket({ basket: base }: { basket: Basket }) {
   return (
     <Link
       href={`/basket/${basket.id}`}
-      className="group block rounded-3xl border border-line bg-bg-elev-1 p-6 transition-colors hover:border-line-heavy sm:p-7"
+      style={tint(basket.kind)}
+      className="group block rounded-3xl border border-line p-6 transition-colors hover:border-line-heavy sm:p-7"
     >
       <div className="flex items-center justify-between gap-3">
         <Chip tone="brand">
@@ -30,18 +32,18 @@ export function FeaturedBasket({ basket: base }: { basket: Basket }) {
       </div>
       <p className="mt-5 text-lg font-semibold tracking-tight">{basket.pitch}</p>
       <div className="mt-4 flex items-center gap-3">
-        <BasketIcon icon={basket.icon} />
+        <BasketIcon icon={basket.icon} kind={basket.kind} />
         <div className="min-w-0">
           <div className="font-semibold">{basket.name}</div>
           <div className="truncate text-sm text-fg-muted">{basket.tagline}</div>
         </div>
       </div>
 
-      <div className="mt-4 rounded-xl bg-bg-alt px-4 py-3">
+      <div className="mt-4 rounded-xl bg-bg/70 px-4 py-3">
         <Clocks w={window} compact />
       </div>
 
-      <WeightBar legs={basket.legs} className="mt-5" />
+      <Weave legs={basket.legs} height={72} className="mt-5" />
       <div className="mt-3 space-y-2.5">
         {basket.legs.map((l, i) => (
           <div key={l.id} className="flex items-center gap-3 text-sm">

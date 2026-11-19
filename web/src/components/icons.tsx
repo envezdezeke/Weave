@@ -1,4 +1,4 @@
-import type { Icon } from "@/lib/data";
+import type { Icon, Kind } from "@/lib/data";
 
 // Three strands woven over and under: one basket, several events.
 export function Logo() {
@@ -20,11 +20,11 @@ const paths: Record<Icon, string> = {
   spark: "M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8L11 3Z",
 };
 
-export function BasketIcon({ icon, size = 40 }: { icon: Icon; size?: number }) {
+export function BasketIcon({ icon, kind = "crypto", size = 40 }: { icon: Icon; kind?: Kind; size?: number }) {
   return (
     <span
-      className="grid shrink-0 place-items-center rounded-xl bg-brand-wash text-brand"
-      style={{ width: size, height: size }}
+      className="grid shrink-0 place-items-center rounded-xl"
+      style={{ width: size, height: size, background: `var(--tint-${kind})`, color: `var(--ink-${kind})` }}
     >
       <svg width={size * 0.55} height={size * 0.55} viewBox="0 0 22 22" fill="none" aria-hidden>
         <path d={paths[icon]} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />

@@ -5,7 +5,7 @@
 // lose a purchase mid-demo. The contracts and operator API replace it later.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { baskets, CRASH_ID, getBasket, hedgeTrade, seedVault, type Basket, type Icon, type Vault } from "./data";
+import { baskets, CRASH_ID, getBasket, hedgeTrade, seedVault, type Basket, type Icon, type Kind, type Vault } from "./data";
 import { hex } from "./format";
 import { crashWindow, inWindow, windowAt, type Leg } from "./markets";
 import { mintPrice } from "./pricing";
@@ -17,6 +17,7 @@ export type Position = {
   basketId: string;
   name: string;
   icon: Icon;
+  kind?: Kind; // missing on positions saved before worry colors
   tokens: number;
   cost: number; // USDC paid, fee included
   price: number; // mint price per token
@@ -63,6 +64,7 @@ function seed(now: number): State {
     basketId: CRASH_ID,
     name: "BTC/ETH Crash Hedge (15 min)",
     icon: "crash",
+    kind: "crypto",
     tokens,
     cost: Math.round(tokens * crashPrice * 100) / 100,
     price: crashPrice,
@@ -81,6 +83,7 @@ function seed(now: number): State {
         basketId: recession.id,
         name: recession.name,
         icon: recession.icon,
+        kind: recession.kind,
         tokens: 80,
         cost: Math.round(80 * rPrice * 100) / 100,
         price: rPrice,
@@ -190,6 +193,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           basketId: basket.id,
           name: basket.name,
           icon: basket.icon,
+          kind: basket.kind,
           tokens,
           cost,
           price,

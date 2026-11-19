@@ -5,9 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { BasketCard, ComboLine, HowItPays, LegList } from "@/components/basket";
 import { Check, Sparkle, Spinner } from "@/components/icons";
-import { Chip, Disclosure, ExtLink, WeightBar } from "@/components/ui";
+import { Chip, Disclosure, ExtLink, tint } from "@/components/ui";
+import { Weave } from "@/components/weave";
 import { WorryInput } from "@/components/worry-input";
-import { draftFromWorry, refine, type Draft, type Option, type Refinement } from "@/lib/builder";
+import { draftFromWorry, KIND_ICON, refine, type Draft, type Option, type Refinement } from "@/lib/builder";
 import { contracts, getBasket, type Basket } from "@/lib/data";
 import { hex, qty, tokenUsd, usd } from "@/lib/format";
 import { geminiUrl } from "@/lib/markets";
@@ -97,7 +98,19 @@ function Result({ q }: { q: string }) {
     if (done && draft.match === "none") addWish?.(q);
   }, [done, draft.match, q, addWish]);
 
-  if (!done) return <ToolCards step={step} />;
+  const threads = draft.options[0]?.legs;
+  if (!done)
+    return (
+      <>
+        {threads && (
+          <div className="mt-10 max-w-3xl">
+            <Weave legs={threads} height={90} draw />
+            <p className="mt-1 text-xs text-fg-muted">Weaving {threads.length} Gemini markets into one basket…</p>
+          </div>
+        )}
+        <ToolCards step={step} />
+      </>
+    );
   return (
     <div className="rise">
       <ToolCards step={step} />
@@ -184,7 +197,8 @@ function Options({ draft, q }: { draft: Draft; q: string }) {
       tagline: `Built from your worry`,
       pitch: q,
       thesis: `An AI-built basket for “${q}”. Each leg pays its share if it happens. The AI picked and weighted the legs; you decide whether to buy.`,
-      icon: "spark",
+      icon: KIND_ICON[draft.kind],
+      kind: draft.kind,
       badge: "AI-built",
       legs: option.legs,
       change: 0.004,
@@ -218,7 +232,7 @@ function Options({ draft, q }: { draft: Draft; q: string }) {
                   <span className="font-semibold">{o.name}</span>
                   <span className="num text-sm font-semibold">{tokenUsd(mintPrice(o.legs))}</span>
                 </div>
-                <WeightBar legs={o.legs} className="mt-3" />
+                <Weave legs={o.legs} height={44} className="mt-3" />
                 <p className="mt-2 text-xs text-fg-muted">{o.legs.map((l) => l.short).join(" · ")}</p>
               </button>
             ))}
@@ -267,14 +281,16 @@ function Options({ draft, q }: { draft: Draft; q: string }) {
 
           <section className="mt-8">
             <h3 className="font-semibold">Why these markets</h3>
-            <WeightBar legs={option.legs} className="mt-3" />
+            <div className="mt-3">
+              <Weave legs={option.legs} height={96} />
+            </div>
             <LegList legs={option.legs} showWhy />
             <ComboLine />
           </section>
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
-          <div className="rounded-2xl border border-line bg-bg-elev-1 p-5">
+          <div className="rounded-3xl border border-line p-5" style={tint(draft.kind)}>
             <div className="flex items-baseline justify-between">
               <span className="text-sm text-fg-muted">Cost per token</span>
               <span className="num text-2xl font-semibold">{tokenUsd(price)}</span>
