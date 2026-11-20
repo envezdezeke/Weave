@@ -49,7 +49,8 @@ UBC 2026 Hackathon · DeFi & Onchain Apps track · Arc award · Gemini Predictio
 
 | Contract | Address |
 |---|---|
-| WeaveBasket (ERC-1155 vault) | _deploying, see below_ |
+| WeaveBasket (ERC-1155 vault) | [`0xdab8e6446ea0819af35ed9ddf7fbc9a74d79e781`](https://explorer.testnet.arc.io/address/0xdab8e6446ea0819af35ed9ddf7fbc9a74d79e781) |
+| Operator | `0x2dE880c145A3Fd99f6e122C24dC0bCF7f7189A89` |
 | USDC (Arc native, ERC-20 interface, 6 dp) | `0x3600000000000000000000000000000000000000` |
 
 Explorer: https://explorer.testnet.arc.io
