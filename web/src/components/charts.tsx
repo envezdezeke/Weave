@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 function toPath(values: number[], w: number, h: number, pad = 2) {
   const min = Math.min(...values);
@@ -9,13 +9,14 @@ function toPath(values: number[], w: number, h: number, pad = 2) {
   return values
     .map((v, i) => {
       const x = (i / (values.length - 1)) * w;
-      const y = pad + (1 - (v - min) / span) * (h - pad * 2);
+      const y = max === min ? h / 2 : pad + (1 - (v - min) / span) * (h - pad * 2);
       return `${i ? "L" : "M"}${x.toFixed(2)},${y.toFixed(2)}`;
     })
     .join(" ");
 }
 
 export const RANGE_LABEL: Record<string, string> = {
+  LIVE: "since you opened this page",
   "1H": "this hour",
   "1D": "past day",
   "1W": "past week",
@@ -24,6 +25,34 @@ export const RANGE_LABEL: Record<string, string> = {
 };
 
 export type Hover = { value: number; start: number; range: string } | null;
+
+// Gemini has no price-history endpoint, so charts never invent a past: this
+// samples the live value while the page is open (kept per tab in
+// sessionStorage) and always returns at least two points.
+export function useLiveSeries(key: string, value: number, max = 240): number[] {
+  const [points, setPoints] = useState<number[]>([]);
+  useEffect(() => {
+    if (!(value > 0)) return; // not loaded yet; a zero start would read as +Infinity%
+    let saved: number[] = [];
+    try {
+      const raw = JSON.parse(sessionStorage.getItem(`live:${key}`) ?? "[]");
+      if (Array.isArray(raw)) saved = raw.filter((n) => typeof n === "number");
+    } catch {}
+    const add = () =>
+      setPoints((ps) => {
+        const next = [...(ps.length ? ps : saved), value].slice(-max);
+        try {
+          sessionStorage.setItem(`live:${key}`, JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+    add();
+    const t = setInterval(add, 15_000);
+    return () => clearInterval(t);
+  }, [key, value, max]);
+  if (points.length >= 2) return points;
+  return points.length ? [points[0], points[0]] : [value, value];
+}
 
 // One line, no axes, a dotted baseline at the range-start price, and a
 // crosshair (pointer or arrow keys) that drives the headline number.
@@ -48,7 +77,7 @@ export function PriceChart({
   const min = Math.min(...values);
   const max = Math.max(...values);
   const span = max - min || 1;
-  const y = (v: number) => 8 + (1 - (v - min) / span) * (H - 16);
+  const y = (v: number) => (max === min ? H / 2 : 8 + (1 - (v - min) / span) * (H - 16));
   const x = (i: number) => (i / (values.length - 1)) * W;
 
   const show = (i: number | null, r = range) => {

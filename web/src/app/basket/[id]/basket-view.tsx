@@ -20,12 +20,12 @@ import {
   WhoDecides,
 } from "@/components/basket";
 import { BuyPanel } from "@/components/buy-panel";
-import { PriceChart, RANGE_LABEL, type Hover } from "@/components/charts";
+import { PriceChart, RANGE_LABEL, useLiveSeries, type Hover } from "@/components/charts";
 import { BasketIcon } from "@/components/icons";
 import { Chip, KindLabel, LegDot, tint } from "@/components/ui";
 import { Weave } from "@/components/weave";
 import { hedgeCoverage, type Basket } from "@/lib/data";
-import { arrowPct, clock, day, history, pct, signedUsd, tokenUsd } from "@/lib/format";
+import { arrowPct, clock, day, pct, signedUsd, tokenUsd } from "@/lib/format";
 import { fairValue, mintPrice } from "@/lib/pricing";
 
 export function BasketView({ basket: base }: { basket: Basket }) {
@@ -40,19 +40,9 @@ export function BasketView({ basket: base }: { basket: Basket }) {
   const v = mock && ob ? { ...mock, supply: ob.supply, balance: ob.reserve } : mock;
   const ai = basket.badge === "AI-built";
 
-  const series = useMemo(
-    (): Record<string, number[]> =>
-      basket.rolling
-        ? { "1H": history(`${basket.id}${window?.end ?? 0}`, value, basket.change, 60) }
-        : {
-            "1D": history(`${basket.id}d`, value, basket.change * 0.5, 60),
-            "1W": history(`${basket.id}w`, value, basket.change, 70),
-            "1M": history(`${basket.id}m`, value, basket.change * 2.5, 90),
-            ALL: history(`${basket.id}a`, value, basket.change * 4, 140),
-          },
-    [basket.id, basket.rolling, basket.change, value, window?.end],
-  );
-  const initial = basket.rolling ? "1H" : "1W";
+  const live = useLiveSeries(`${basket.id}${window?.end ?? ""}`, value);
+  const series = useMemo((): Record<string, number[]> => ({ LIVE: live }), [live]);
+  const initial = "LIVE";
   const range = hover?.range ?? initial;
   const shown = hover?.value ?? value;
   const start = hover?.start ?? series[initial][0];
@@ -82,7 +72,7 @@ export function BasketView({ basket: base }: { basket: Basket }) {
                     <Chip tone={v.balance >= v.supply ? "positive" : "warning"}>{Math.floor((v.balance / v.supply) * 100)}% reserved</Chip>
                   </a>
                   <a href="#backing">
-                    <Chip tone={hedgeCoverage(v.trades) >= 1 ? "neutral" : "warning"}>{Math.floor(hedgeCoverage(v.trades) * 100)}% {ob ? "sandbox hedge (simulated)" : "hedged on Gemini"}</Chip>
+                    <Chip tone={hedgeCoverage(v.trades) >= 1 ? "neutral" : "warning"}>{Math.floor(hedgeCoverage(v.trades) * 100)}% sandbox hedge (demo record)</Chip>
                   </a>
                 </div>
               )}
@@ -112,7 +102,7 @@ export function BasketView({ basket: base }: { basket: Basket }) {
           </div>
 
           <div className="mt-6">
-            <PriceChart series={series} initial={initial} onHover={setHover} caption="Weighted mid of the legs · max payout $1.00" />
+            <PriceChart series={series} initial={initial} onHover={setHover} caption="Weighted mid of the legs from Gemini's live books, sampled while this page is open · max payout $1.00" />
           </div>
 
           <section className="mt-10">

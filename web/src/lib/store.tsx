@@ -125,7 +125,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<State | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const stateRef = useRef(state);
-  stateRef.current = state;
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   // Load after mount: the server has no clock or storage for this demo.
   useEffect(() => {

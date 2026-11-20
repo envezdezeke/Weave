@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { redeem as chainRedeem, sendTokens as chainSend } from "@/lib/chain";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PriceChart, RANGE_LABEL, type Hover } from "@/components/charts";
+import { PriceChart, RANGE_LABEL, useLiveSeries, type Hover } from "@/components/charts";
 import { BasketIcon, Check, Spinner } from "@/components/icons";
 import { Chip, ExtLink, Row, Sheet, tint } from "@/components/ui";
 import { explorer } from "@/lib/data";
-import { arrowPct, clock, dateTime, history, qty, short, signedUsd, usd } from "@/lib/format";
+import { arrowPct, clock, dateTime, qty, short, signedUsd, usd } from "@/lib/format";
 import { geminiUrl, type Leg } from "@/lib/markets";
 import { payout, positionState } from "@/lib/positions";
 import { mid } from "@/lib/pricing";
@@ -44,21 +44,14 @@ export default function Portfolio() {
   const ready = now ? held.filter((p) => positionState(p, now).key === "ready") : [];
   const readyAmount = ready.reduce((s, p) => s + payout(p), 0);
 
-  const series = useMemo<Record<string, number[]>>(
-    () => ({
-      "1D": history("pf-d", total, 0.9, 60),
-      "1W": history("pf-w", total, 2.4, 70),
-      "1M": history("pf-m", total, 4.1, 90),
-      ALL: history("pf-a", total, 6.5, 140),
-    }),
-    [total],
-  );
+  const live = useLiveSeries("portfolio", total);
+  const series = useMemo<Record<string, number[]>>(() => ({ LIVE: live }), [live]);
 
   if (!store || now === null) return <div className="mt-10 h-96 animate-pulse rounded-2xl bg-bg-alt" />;
 
   const shown = hover?.value ?? total;
-  const start = hover?.start ?? series["1W"][0];
-  const range = hover?.range ?? "1W";
+  const start = hover?.start ?? series.LIVE[0];
+  const range = hover?.range ?? "LIVE";
 
   const flash = (text: string, hash: string) => {
     setToast({ text, hash });
@@ -96,7 +89,7 @@ export default function Portfolio() {
             {signedUsd(shown - start)} ({arrowPct((shown - start) / start)}) <span className="font-normal text-fg-muted">{RANGE_LABEL[range]}</span>
           </div>
           <div className="mt-6">
-            <PriceChart series={series} initial="1W" onHover={setHover} caption="Cash plus basket value" />
+            <PriceChart series={series} initial="LIVE" onHover={setHover} caption="Cash plus basket value" />
           </div>
 
           <h2 className="mt-10 text-lg font-semibold">Positions</h2>
