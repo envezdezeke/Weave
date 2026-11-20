@@ -64,6 +64,28 @@ A Weave basket pays per leg, so if 2 of your 3 worries happen, you get 2/3 of th
    output validated (known ids, weights sum to 1, honest "none"), rules fallback
 ```
 
+## Gemini Prediction Markets integration
+
+Gemini is the source of truth for every price and every result in Weave, and the place the operator hedges.
+Production data drives the product; the sandbox is used only for orders, so no real money moves.
+
+| Gemini API | Environment | What Weave uses it for | Code |
+|---|---|---|---|
+| `GET /v1/prediction-markets/events?status=active&category=crypto&limit=500` | Production (public) | Finds the nearest hourly BTC and ETH "price today at" ladder events with more than 5 minutes left, to open each hour's Crash Cover basket | [`web/src/lib/gemini.ts`](web/src/lib/gemini.ts) `crashLegs` |
+| `GET /v1/prediction-markets/events/{ticker}` | Production (public) | Live `bestBid` / `bestAsk` for every leg, cached 15 s server-side and polled by the app through `/api/live` | [`web/src/lib/gemini.ts`](web/src/lib/gemini.ts) `getEvent`, `live` |
+| `contracts[].resolutionSide`, `resolvedAt` | Production (public) | Settlement: the operator posts each leg's result onchain with these fields as the evidence string | [`contracts/operator/operator.ts`](contracts/operator/operator.ts) |
+| `GET /v1/prediction-markets/events/{ticker}` | Sandbox | Finds the same contract on the sandbox ladder, or the nearest strike when the ladders differ | [`contracts/operator/hedger.ts`](contracts/operator/hedger.ts) |
+| `POST /v1/prediction-markets/order` (HMAC-SHA384 signed) | Sandbox | Mirrors each mint: buys wᵢ·N NO contracts per leg as limit, immediate-or-cancel orders, and logs every fill and order id | [`contracts/operator/hedger.ts`](contracts/operator/hedger.ts) `hedgeMint` |
+
+How each piece maps to the product:
+
+- **Strike choice.** For each asset, Weave picks the "$X or above" contract whose YES mid is closest to 0.75 among contracts with both a bid and an ask. NO then costs about a quarter and pays only on a real drop through a set price.
+- **Pricing.** The mint price is Σ wᵢ · NO askᵢ × 1.02, built straight from Gemini's book (the NO ask is 1 minus the YES bid). A leg with no ask is never priced at mid; it cannot be bought. Gemini has no price-history endpoint, so every chart in the app is built from live data, never simulated.
+- **AI builder.** The builder works over a curated catalog of real Gemini markets across crypto, economy, rates and energy, each shown with its exact Gemini title, contract, side and live ask. It can only pick ids from that list, and it says so when no market fits a worry.
+- **Resolution.** A leg settles only after Gemini sets `resolutionSide`. The contract accepts each leg's result exactly once, and the evidence string (`symbol resolutionSide=... resolvedAt=...`) is stored onchain, so anyone can check a payout against Gemini.
+- **Hedging.** Because the payout is linear, buying wᵢ·N contracts of each leg replicates the basket exactly. A failed sandbox fill is recorded as unhedged and never blocks a mint; the onchain reserve still covers every payout.
+- **Why it's good for Gemini.** Every Weave leg is a Gemini instrument symbol, so each basket sold is order flow into Gemini's books. Weave adds a product Gemini doesn't offer today, a per-leg basket instead of an all-or-nothing combo, on top of Gemini's existing markets.
+
 ## Economic design
 
 - **Fully collateralized.** A mint is refused unless the vault holds at least $1 for every token outstanding (`reserve ≥ supply × $1`), so the reserve can always pay the maximum payout. The operator funds the gap between the price paid and $1 when it opens a basket. `solvencyBps(id)` exposes the coverage ratio and drives the app's solvency gauge.
