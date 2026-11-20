@@ -8,7 +8,7 @@ import { draftFromWorry, type Draft, type Match } from "@/lib/builder";
 import { catalog, leg, type LegId } from "@/lib/markets";
 
 const GROQ = "https://api.groq.com/openai/v1/chat/completions";
-const MODEL = process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile";
+const MODEL = process.env.GROQ_MODEL ?? "openai/gpt-oss-120b";
 const KINDS = ["crypto", "economy", "weather", "rates", "energy"] as const;
 const MATCHES: Match[] = ["strong", "partial", "none"];
 
