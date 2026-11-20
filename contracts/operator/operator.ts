@@ -35,9 +35,9 @@ const WEAVE = env("WEAVE_ADDRESS") as Address;
 const FUND = parseUnits(env("FUND_USDC", "20"), 6);
 const WEIGHTS = [7000, 3000]; // decision Q17: 70% BTC, 30% ETH
 const CUTOFF_S = 5 * 60; // buying closes 5 minutes before the hour
-const MAX_STALE_S = 120;
+const MAX_STALE_S = 240; // mints refused if the posted price is over 4 minutes old
 const FEE = 0.02;
-const TICK_MS = 30_000;
+const TICK_MS = 15_000;
 
 const abi = JSON.parse(
   readFileSync(new URL("../artifacts/contracts/WeaveBasket.sol/WeaveBasket.json", import.meta.url), "utf8"),

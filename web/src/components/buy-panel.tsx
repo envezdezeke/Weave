@@ -39,7 +39,7 @@ export function BuyPanel({ basket, window: w, ends, now }: { basket: Basket; win
   const live = useLive();
   const ob = onchain && basket.rolling ? (live?.basket ?? null) : null;
   const chainMode = onchain && !!basket.rolling;
-  const fresh = !!ob && !ob.settled && !!now && now < ob.closeTime && now - ob.priceAt < 120_000;
+  const fresh = !!ob && !ob.settled && !!now && now < ob.closeTime && now - ob.priceAt < 240_000;
   const price = ob && fresh ? ob.price : mintPrice(basket.legs);
   const raw = mode === "risk" ? sizeHedge(Number(atRisk) || 0, share / 100, price) : sizeFromCost(Number(spend) || 0, price);
   const whole = Math.floor(raw.tokens);

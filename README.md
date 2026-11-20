@@ -12,7 +12,7 @@ UBC 2026 Hackathon · DeFi & Onchain Apps track · Arc award · Gemini Predictio
    ▼
  Operator (contracts/operator)                         Gemini SANDBOX
    ├─ opens the hourly Crash Cover basket ──────────►  mirrors each mint:
-   ├─ posts price = Σ wᵢ·askᵢ × 1.02 every 30 s        buys wᵢ·N NO contracts
+   ├─ posts price = Σ wᵢ·askᵢ × 1.02 every 15 s        buys wᵢ·N NO contracts
    └─ posts each leg's result with evidence            per leg (never real money)
    ▼
  WeaveBasket (Arc testnet, ERC-1155 + USDC vault)
@@ -20,10 +20,12 @@ UBC 2026 Hackathon · DeFi & Onchain Apps track · Arc award · Gemini Predictio
    ▲
  Web app (web/, Next.js + viem + MetaMask)
    live prices via /api/live · buy · redeem · send
+   AI builder via /api/build: LLM on Groq picks legs from the Gemini market list,
+   output validated (known ids, weights sum to 1, honest "none"), rules fallback
 ```
 
 1. **Worry to basket.** A basket is a set of Gemini markets (legs) with weights that sum to 100%. The demo basket, **Crash Cover**, holds NO on "BTC ≥ $X" (70%) and NO on "ETH ≥ $Y" (30%), with each strike just below the current price, in Gemini's hourly markets.
-2. **Price.** The fair value of one token is Σ wᵢ·pᵢ. That holds whatever the correlation between legs, by linearity of expectation, so it needs no correlation model. The operator posts the mint price Σ wᵢ·askᵢ × 1.02 (a 2% fee). The contract refuses a mint when the price is older than 120 s or exceeds the buyer's max cost.
+2. **Price.** The fair value of one token is Σ wᵢ·pᵢ. That holds whatever the correlation between legs, by linearity of expectation, so it needs no correlation model. The operator posts the mint price Σ wᵢ·askᵢ × 1.02 (a 2% fee). The contract refuses a mint when the price is older than 240 s or exceeds the buyer's max cost.
 3. **Buy.** The user pays USDC on Arc and receives ERC-1155 basket tokens. Each token pays up to $1.
 4. **Resolve.** After Gemini settles each market, the operator posts `resolveLeg` with Gemini's `resolutionSide` and `resolvedAt` as evidence. Each leg is resolved exactly once.
 5. **Redeem.** Each token pays Σ wᵢ over the legs that hit, pro-rata: if BTC drops through its strike but ETH does not, a token pays $0.70. A combo or parlay would pay nothing in that case.

@@ -83,7 +83,19 @@ const BADGE = {
 // Keyed by the query, so a new worry restarts the tool-call cards.
 function Result({ q }: { q: string }) {
   const [step, setStep] = useState(0);
-  const draft = useMemo(() => draftFromWorry(q), [q]);
+  const fallback = useMemo(() => draftFromWorry(q), [q]);
+  const [ai, setAi] = useState<{ draft: Draft; source: string } | null>(null);
+  useEffect(() => {
+    let live = true;
+    fetch("/api/build", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ worry: q }) })
+      .then((r) => r.json())
+      .then((j) => live && setAi(j?.draft ? j : { draft: fallback, source: "rules" }))
+      .catch(() => live && setAi({ draft: fallback, source: "rules" }));
+    return () => {
+      live = false;
+    };
+  }, [q, fallback]);
+  const draft = ai?.draft ?? fallback;
   const store = useStore();
   const addWish = store?.addWish;
 
@@ -92,7 +104,7 @@ function Result({ q }: { q: string }) {
     return () => ids.forEach(clearTimeout);
   }, []);
 
-  const done = step >= STEPS.length;
+  const done = step >= STEPS.length && ai !== null;
 
   useEffect(() => {
     if (done && draft.match === "none") addWish?.(q);
