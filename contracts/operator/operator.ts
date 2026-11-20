@@ -53,8 +53,23 @@ const chain = defineChain({
 });
 const wallet = createWalletClient({ account, chain, transport: http(RPC) });
 
-type Meta = { series: string; expires: string; legs: { symbol: string; ticker: string; label: string }[] };
-type Onchain = { id: bigint; meta: Meta; results: number[]; closeTime: bigint; settled: boolean };
+// side: the outcome the basket holds on that leg (Crash Cover holds "no"; default "no").
+type MetaLeg = { symbol: string; ticker: string; label: string; side?: "yes" | "no" };
+type Meta = { series: string; expires: string; legs: MetaLeg[] };
+type Onchain = { id: bigint; meta: Meta; weights: number[]; results: number[]; closeTime: bigint; settled: boolean; extra: bigint };
+
+// Recession Hedge (curated, decision Q5): YES legs priced from production,
+// resolving Dec 2026 to Feb 2027, so it stays open through the demo.
+const RECESSION: { weights: number[]; close: string; legs: MetaLeg[] } = {
+  weights: [3500, 3500, 3000],
+  close: "2026-12-31T00:00:00.000Z",
+  legs: [
+    { symbol: "GEMI-RECESSION26-2026", ticker: "RECESSION26", label: "US recession in 2026", side: "yes" },
+    { symbol: "GEMI-SPXLOW26-SPXLE6300", ticker: "SPXLOW26", label: "S&P 500 low at or below 6,300", side: "yes" },
+    { symbol: "GEMI-UNEMP2026-GT7", ticker: "UNEMP2026", label: "Unemployment above 7%", side: "yes" },
+  ],
+};
+const RECESSION_FUND = parseUnits(env("RECESSION_FUND_USDC", "3"), 6);
 
 const log = (...a: unknown[]) => console.log(new Date().toISOString().slice(11, 19), ...a);
 
@@ -66,15 +81,14 @@ async function send(functionName: string, args: unknown[]) {
   return r;
 }
 
-// Recent Crash Cover baskets, newest first (the chain is the source of truth).
-async function recent(n = 12): Promise<Onchain[]> {
+// Recent baskets of every series, newest first (the chain is the source of truth).
+async function recent(n = 14): Promise<Onchain[]> {
   const next = (await pub.readContract({ address: WEAVE, abi, functionName: "nextId" })) as bigint;
   const out: Onchain[] = [];
   for (let id = next - 1n; id >= 1n && out.length < n; id--) {
     const meta = JSON.parse((await pub.readContract({ address: WEAVE, abi, functionName: "metaOf", args: [id] })) as string) as Meta;
-    if (meta.series !== "crash-1h") continue;
     const b = (await pub.readContract({ address: WEAVE, abi, functionName: "basket", args: [id] })) as readonly unknown[];
-    out.push({ id, meta, results: (b[1] as number[]).map(Number), closeTime: b[2] as bigint, settled: b[8] as boolean });
+    out.push({ id, meta, weights: (b[0] as number[]).map(Number), results: (b[1] as number[]).map(Number), closeTime: b[2] as bigint, settled: b[8] as boolean, extra: (b[6] as bigint) - (b[5] as bigint) * (b[7] as bigint) });
   }
   return out;
 }
@@ -104,18 +118,19 @@ async function open(legs: CrashLeg[]) {
   return r;
 }
 
-// NO-side ask for a "$X or above" leg is 1 - YES bid. No YES bid: no ask, no price.
-async function noAsk(ticker: string, symbol: string) {
-  const e = await getEvent(ticker);
-  const c = e.contracts.find((x) => x.instrumentSymbol === symbol);
-  const bid = c?.prices?.bestBid;
-  return bid == null || bid === "" ? null : 1 - Number(bid);
+// Ask for the side the basket holds. NO ask = 1 - YES bid. No ask: no price.
+async function legAsk(l: MetaLeg) {
+  const e = await getEvent(l.ticker);
+  const c = e.contracts.find((x) => x.instrumentSymbol === l.symbol);
+  const v = (l.side ?? "no") === "yes" ? c?.prices?.bestAsk : c?.prices?.bestBid;
+  if (v == null || v === "") return null;
+  return (l.side ?? "no") === "yes" ? Number(v) : 1 - Number(v);
 }
 
 async function price(b: Onchain) {
-  const asks = await Promise.all(b.meta.legs.map((l) => noAsk(l.ticker, l.symbol)));
+  const asks = await Promise.all(b.meta.legs.map(legAsk));
   if (asks.some((a) => a === null)) return log(`  basket ${b.id}: a leg has no ask, price not posted`);
-  const p = asks.reduce((s, a, i) => s + (a as number) * (WEIGHTS[i] / 10_000), 0) * (1 + FEE);
+  const p = asks.reduce((s, a, i) => s + (a as number) * (b.weights[i] / 10_000), 0) * (1 + FEE);
   const units = BigInt(Math.ceil(p * 1e6));
   await send("postPrice", [b.id, units]);
 }
@@ -127,10 +142,10 @@ async function resolve(b: Onchain) {
     const c = e.contracts.find((x) => x.instrumentSymbol === l.symbol);
     const side = c?.resolutionSide?.toLowerCase();
     if (side !== "yes" && side !== "no") continue; // not resolved yet
-    // The basket holds NO, so the leg pays when Gemini resolves NO.
+    // The leg pays when Gemini resolves to the side the basket holds.
     const evidence = `${l.symbol} resolutionSide=${side} resolvedAt=${(c as { resolvedAt?: string }).resolvedAt ?? ""}`;
     log(`resolve basket ${b.id} leg ${i}: ${evidence}`);
-    await send("resolveLeg", [b.id, i, side === "no", evidence]);
+    await send("resolveLeg", [b.id, i, side === (l.side ?? "no"), evidence]);
   }
 }
 
@@ -152,10 +167,18 @@ async function hedgeNewMints() {
       log(`mint ${tokens} on basket ${id}: unhedged (no sandbox key)`);
       continue;
     }
+    if (meta.series !== "crash-1h") {
+      log(`mint ${tokens} on basket ${id} (${meta.series}): not hedged; sandbox lists only crypto markets`);
+      continue;
+    }
     const fills = await hedgeMint({ id, tokens, tx: l.transactionHash }, meta.legs, WEIGHTS);
     log(`hedged mint ${tokens} on basket ${id}: ${fills.map((f) => (f.orderId ? `${f.qty} NO ${f.symbol} @${f.price}` : `FAILED ${f.symbol}: ${f.error}`)).join("; ")}`);
   }
 }
+
+// Set once Recession Hedge is seen onchain, so it is never opened twice even
+// after it scrolls out of the recent-basket scan. Restarting the operator rescans.
+let recessionOpen = false;
 
 async function tick() {
   await hedgeNewMints().catch((e) => log("hedge scan failed:", (e as Error).message.split("\n")[0]));
@@ -165,15 +188,29 @@ async function tick() {
   if (legs.length === 2 && !baskets.some((b) => b.meta.expires === legs[0].expires)) {
     await open(legs);
   }
+  if (baskets.some((b) => b.meta.series === "recession")) recessionOpen = true;
+  if (!recessionOpen) {
+    recessionOpen = true;
+    log("open Recession Hedge");
+    const meta: Meta = { series: "recession", expires: RECESSION.close, legs: RECESSION.legs };
+    await send("createBasket", [RECESSION.weights, BigInt(Date.parse(RECESSION.close) / 1000), MAX_STALE_S, JSON.stringify(meta)]);
+    const next = (await pub.readContract({ address: WEAVE, abi, functionName: "nextId" })) as bigint;
+    await send("fund", [next - 1n, RECESSION_FUND]);
+  }
   for (const b of baskets) {
+    // After settlement, take back collateral holders are not owed so it can fund the next hour.
+    if (b.settled && b.extra > 0n) await send("sweep", [b.id, account.address]);
+    if (b.settled) continue;
     const exp = Date.parse(b.meta.expires);
-    if (!b.settled && now >= exp) await resolve(b);
-    else if (!b.settled && now / 1000 < Number(b.closeTime)) await price(b);
+    // Crash legs settle at the hour; Recession legs settle on their own dates.
+    if (now >= exp || b.meta.series === "recession") await resolve(b);
+    if (now / 1000 < Number(b.closeTime) && b.results.every((r) => r === 0)) await price(b);
   }
 }
 
 log(`operator ${account.address} on chain ${chain.id}, vault ${WEAVE}`);
 await ensureAllowance();
+recessionOpen = (await recent(1000)).some((b) => b.meta.series === "recession");
 for (;;) {
   try {
     await tick();

@@ -51,6 +51,8 @@ UBC 2026 Hackathon · DeFi & Onchain Apps track · Arc award · Gemini Predictio
 |---|---|
 | WeaveBasket (ERC-1155 vault) | [`0xdab8e6446ea0819af35ed9ddf7fbc9a74d79e781`](https://explorer.testnet.arc.io/address/0xdab8e6446ea0819af35ed9ddf7fbc9a74d79e781) |
 | Operator | `0x2dE880c145A3Fd99f6e122C24dC0bCF7f7189A89` |
+
+Source verified on the explorer ([contract tab](https://explorer.testnet.arc.io/address/0xdab8e6446ea0819af35ed9ddf7fbc9a74d79e781?tab=contract)). Baskets live now: Crash Cover rolls hourly (a new token id each hour); Recession Hedge is token id 3.
 | USDC (Arc native, ERC-20 interface, 6 dp) | `0x3600000000000000000000000000000000000000` |
 
 Explorer: https://explorer.testnet.arc.io

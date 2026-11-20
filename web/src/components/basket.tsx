@@ -8,6 +8,7 @@ import { geminiUrl, inWindow, type Leg, type Window } from "@/lib/markets";
 import { fairValue, illiquid, lastExpiry, mid, mintPrice, outcomes, payoutFor, quote } from "@/lib/pricing";
 import { useCrashWindow, useStore } from "@/lib/store";
 import { useLive, withLive } from "@/lib/live";
+import { onchain, WEAVE, type OnchainBasket } from "@/lib/chain";
 import { ChanceBar } from "./charts";
 import { BasketIcon } from "./icons";
 import { Address, Card, Chip, ExtLink, KindLabel, LegDot, Row, SideChip, tint, WeightBar } from "./ui";
@@ -310,13 +311,22 @@ export function useVault(b: Basket, window: Window | null) {
   return store?.vault(b, window?.end) ?? null;
 }
 
+// The newest Crash Cover basket onchain, for the rolling basket only.
+export function useOnchainBasket(b: Basket): OnchainBasket | null {
+  const live = useLive();
+  return onchain && b.rolling ? (live?.basket ?? null) : null;
+}
+
 // Reserve ratio, solvency gauge and hedge coverage (decisions Q8, Q13).
 export function BackingCard({ basket, window, now }: { basket: Basket; window: Window | null; now: number | null }) {
-  const v = useVault(basket, window);
+  const mock = useVault(basket, window);
+  const ob = useOnchainBasket(basket);
   const block = now ? contracts.block + Math.floor((now - Date.UTC(2026, 10, 18, 22)) / 2000) : null;
-  if (!v) return <Card className="h-56 animate-pulse">{null}</Card>;
+  if (!mock) return <Card className="h-56 animate-pulse">{null}</Card>;
+  // Onchain: reserve vs supply x $1. The hedge record stays a sandbox simulation.
+  const v = ob ? { ...mock, supply: ob.supply, balance: ob.reserve } : mock;
   const ratio = v.supply ? v.balance / v.supply : 1;
-  const hedged = hedgeCoverage(v.trades);
+  const hedged = hedgeCoverage(mock.trades);
   return (
     <Card id="backing">
       <div className="flex items-center justify-between gap-2">
@@ -339,10 +349,10 @@ export function BackingCard({ basket, window, now }: { basket: Basket; window: W
       )}
       <div className="mt-5 space-y-4">
         <Gauge value={ratio} label="Vault balance ÷ max liability" />
-        <Gauge value={hedged} label="Hedged on Gemini (sandbox)" />
+        <Gauge value={hedged} label={ob ? "Sandbox hedge (simulated)" : "Hedged on Gemini (sandbox)"} />
       </div>
       <p className="num mt-4 flex flex-wrap items-center gap-x-2 text-xs text-fg-muted">
-        <span>As of block {block ? qty(block) : "–"}</span>
+        <span>{ob ? `Basket #${ob.id}, read from Arc` : `As of block ${block ? qty(block) : "–"}`}</span>
         <span aria-hidden>·</span>
         <ExtLink href={explorer.address(basket.vault)}>Verify on Arc</ExtLink>
       </p>
@@ -355,6 +365,7 @@ export function BackingCard({ basket, window, now }: { basket: Basket; window: W
 }
 
 export function OnchainCard({ basket }: { basket: Basket }) {
+  const ob = useOnchainBasket(basket);
   return (
     <Card>
       <h2 className="font-semibold">Onchain</h2>
@@ -364,10 +375,36 @@ export function OnchainCard({ basket }: { basket: Basket }) {
       </p>
       <div className="mt-3 text-sm">
         <Row label="Basket token" value={<Address value={basket.token} />} />
-        <Row label="Token ID" value={basket.tokenId} />
+        <Row label="Token ID" value={ob ? ob.id : basket.tokenId} />
         <Row label="Vault" value={<Address value={basket.vault} />} />
         <Row label="Resolver" value={<Address value={contracts.resolver} />} />
         <Row label="USDC" value={<Address value={contracts.usdc} />} />
+      </div>
+    </Card>
+  );
+}
+
+const RESULT = ["Open", "Hit", "Miss"];
+
+// Onchain proof for the live Crash Cover: contract, basket id, posted price, Gemini symbols, results.
+export function ProofCard({ basket, now }: { basket: Basket; now: number | null }) {
+  const ob = useOnchainBasket(basket);
+  if (!ob) return null;
+  const ago = now && ob.priceAt ? Math.max(0, Math.round((now - ob.priceAt) / 1000)) : null;
+  return (
+    <Card id="proof">
+      <h2 className="font-semibold">Proof</h2>
+      <div className="mt-3 text-sm">
+        <Row label="Vault contract" value={<ExtLink href={explorer.address(WEAVE)}>{`${WEAVE.slice(0, 6)}…${WEAVE.slice(-4)}`}</ExtLink>} />
+        <Row label="Basket ID" value={`#${ob.id}`} />
+        <Row label="Posted price" value={`${tokenUsd(ob.price)}${ago === null ? "" : ` · ${ago}s ago`}`} />
+        {ob.meta.legs.map((l, i) => (
+          <Row
+            key={l.symbol}
+            label={<span className="font-mono text-xs">{l.symbol}</span>}
+            value={ob.settled ? RESULT[ob.results[i]] ?? "–" : l.label}
+          />
+        ))}
       </div>
     </Card>
   );

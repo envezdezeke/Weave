@@ -12,8 +12,10 @@ import {
   HowItPays,
   LegList,
   OnchainCard,
+  ProofCard,
   ThreeNumbers,
   useLiveBasket,
+  useOnchainBasket,
   useVault,
   WhoDecides,
 } from "@/components/basket";
@@ -33,7 +35,9 @@ export function BasketView({ basket: base }: { basket: Basket }) {
   const [hover, setHover] = useState<Hover>(null);
   const [sheet, setSheet] = useState(false);
   const [activeLeg, setActiveLeg] = useState<number | null>(null);
-  const v = useVault(basket, window);
+  const mock = useVault(basket, window);
+  const ob = useOnchainBasket(basket);
+  const v = mock && ob ? { ...mock, supply: ob.supply, balance: ob.reserve } : mock;
   const ai = basket.badge === "AI-built";
 
   const series = useMemo(
@@ -78,7 +82,7 @@ export function BasketView({ basket: base }: { basket: Basket }) {
                     <Chip tone={v.balance >= v.supply ? "positive" : "warning"}>{Math.floor((v.balance / v.supply) * 100)}% reserved</Chip>
                   </a>
                   <a href="#backing">
-                    <Chip tone={hedgeCoverage(v.trades) >= 1 ? "neutral" : "warning"}>{Math.floor(hedgeCoverage(v.trades) * 100)}% hedged on Gemini</Chip>
+                    <Chip tone={hedgeCoverage(v.trades) >= 1 ? "neutral" : "warning"}>{Math.floor(hedgeCoverage(v.trades) * 100)}% {ob ? "sandbox hedge (simulated)" : "hedged on Gemini"}</Chip>
                   </a>
                 </div>
               )}
@@ -143,6 +147,7 @@ export function BasketView({ basket: base }: { basket: Basket }) {
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
             <BackingCard basket={basket} window={window} now={now} />
             <OnchainCard basket={basket} />
+            <ProofCard basket={basket} now={now} />
           </div>
           <div className="mt-4 space-y-4">
             <WhoDecides legs={basket.legs} />

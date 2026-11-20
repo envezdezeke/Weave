@@ -45,11 +45,14 @@ export type Basket = {
   worry?: string; // AI-built only
 };
 
+// Real vault on Arc testnet when configured; otherwise the demo mocks.
+const WEAVE = process.env.NEXT_PUBLIC_WEAVE_ADDRESS || "";
+
 export const contracts = {
   chain: "Arc Testnet",
   chainId: 5042002,
-  explorer: "https://explorer.testnet.arc.io",
-  basketToken: hex("weave-1155", 40),
+  explorer: process.env.NEXT_PUBLIC_EXPLORER || "https://explorer.testnet.arc.io",
+  basketToken: WEAVE || hex("weave-1155", 40),
   usdc: "0x3600000000000000000000000000000000000000",
   resolver: hex("weave-resolver", 40),
   operator: hex("weave-operator", 40),
@@ -79,7 +82,7 @@ export const baskets: Basket[] = [
     change: -0.012,
     token: contracts.basketToken,
     tokenId: 1,
-    vault: hex("vault-crash", 40),
+    vault: WEAVE || hex("vault-crash", 40),
   },
   {
     id: "recession-hedge",
