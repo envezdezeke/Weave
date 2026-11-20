@@ -7,6 +7,7 @@ import { cents, chance, clock, compactUsd, dateTime, day, left, oneIn, pct, qty,
 import { geminiUrl, inWindow, type Leg, type Window } from "@/lib/markets";
 import { fairValue, illiquid, lastExpiry, mid, mintPrice, outcomes, payoutFor, quote } from "@/lib/pricing";
 import { useCrashWindow, useStore } from "@/lib/store";
+import { useLive, withLive } from "@/lib/live";
 import { ChanceBar } from "./charts";
 import { BasketIcon } from "./icons";
 import { Address, Card, Chip, ExtLink, KindLabel, LegDot, Row, SideChip, tint, WeightBar } from "./ui";
@@ -15,11 +16,13 @@ import { Address, Card, Chip, ExtLink, KindLabel, LegDot, Row, SideChip, tint, W
 // times render as placeholders and nothing shows a stale window.
 export function useLiveBasket(b: Basket) {
   const w = useCrashWindow();
+  const live = useLive();
   return useMemo(() => {
-    const legs = b.rolling && w ? b.legs.map((l) => inWindow(l, w)) : b.legs;
-    const ends = b.rolling ? (w ? new Date(w.end).toISOString() : "") : lastExpiry(b.legs);
-    return { basket: { ...b, legs }, window: b.rolling ? w : null, now: w?.now ?? null, ends };
-  }, [b, w]);
+    const timed = b.rolling && w ? b.legs.map((l) => inWindow(l, w)) : b.legs;
+    const legs = timed.map((l) => withLive(l, live));
+    const ends = b.rolling ? (w ? new Date(w.end).toISOString() : "") : lastExpiry(legs);
+    return { basket: { ...b, legs }, window: b.rolling ? w : null, now: w?.now ?? null, ends, live: live?.at ?? null };
+  }, [b, w, live]);
 }
 
 const endsText = (b: Basket, ends: string) => (!ends ? "–" : b.rolling ? clock(ends) : day(ends));

@@ -9,6 +9,7 @@ import { baskets, CRASH_ID, getBasket, hedgeTrade, seedVault, type Basket, type 
 import { hex } from "./format";
 import { crashWindow, inWindow, windowAt, type Leg } from "./markets";
 import { mintPrice } from "./pricing";
+import { onchain, readBasket } from "./chain";
 
 export type LegState = "open" | "yes" | "no" | "voided";
 
@@ -27,6 +28,7 @@ export type Position = {
   hash: string;
   at: number;
   windowEnd?: number;
+  chainId?: number; // WeaveBasket token id when bought onchain
   redeemed?: { amount: number; hash: string; at: number };
   sends?: { to: string; tokens: number; hash: string; at: number }[];
 };
@@ -102,7 +104,7 @@ function seed(now: number): State {
   };
 }
 
-type BuyInput = { basket: Basket; legs: Leg[]; tokens: number; price: number; cost: number; windowEnd?: number };
+type BuyInput = { basket: Basket; legs: Leg[]; tokens: number; price: number; cost: number; windowEnd?: number; hash?: string; chainId?: number };
 
 type Store = State & {
   ready: boolean;
@@ -110,8 +112,8 @@ type Store = State & {
   submitBuy: (p: BuyInput) => { id: string; hash: string };
   confirmBuy: (id: string, opts?: { hedgeFails?: boolean }) => void;
   failBuy: (id: string) => void;
-  redeem: (id: string) => { amount: number; hash: string };
-  send: (id: string, to: string, tokens: number) => string;
+  redeem: (id: string, hash?: string) => { amount: number; hash: string };
+  send: (id: string, to: string, tokens: number, hash?: string) => string;
   saveDraft: (b: Basket) => string;
   addWish: (w: string) => void;
   reset: () => void;
@@ -122,6 +124,8 @@ const StoreContext = createContext<Store | null>(null);
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<State | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   // Load after mount: the server has no clock or storage for this demo.
   useEffect(() => {
@@ -150,7 +154,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (!s) return s;
         let changed = false;
         const positions = s.positions.map((p) => {
-          if (!p.windowEnd || p.status !== "open" || now < p.windowEnd + RESOLVE_LAG) return p;
+          if (p.chainId || !p.windowEnd || p.status !== "open" || now < p.windowEnd + RESOLVE_LAG) return p;
           if (Object.values(p.results).every((r) => r.state !== "open")) return p;
           changed = true;
           const results = Object.fromEntries(
@@ -166,6 +170,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       clearInterval(id);
       pending.forEach(clearTimeout);
     };
+  }, []);
+
+  // Onchain positions take their results from the vault, which the operator
+  // fills from Gemini's resolutionSide. Legs are stored in the basket's order.
+  useEffect(() => {
+    if (!onchain) return;
+    const poll = async () => {
+      const open = (stateRef.current?.positions ?? []).filter((p) => p.chainId && Object.values(p.results).some((r) => r.state === "open"));
+      for (const p of open) {
+        try {
+          const b = await readBasket(p.chainId!);
+          const results = Object.fromEntries(
+            p.legs.map((l, i) => [l.id, b.results[i] === 0 ? { state: "open" as const } : { state: (b.results[i] === 1 ? "yes" : "no") as LegState, at: Date.now() }]),
+          );
+          setState((s) => (s ? { ...s, positions: s.positions.map((x) => (x.id === p.id ? { ...x, results } : x)) } : s));
+        } catch {}
+      }
+    };
+    poll();
+    const id = setInterval(poll, 10_000);
+    return () => clearInterval(id);
   }, []);
 
   const update = useCallback((fn: (s: State) => State) => setState((s) => (s ? fn(s) : s)), []);
@@ -186,7 +211,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ...state,
       ready: true,
       vault,
-      submitBuy: ({ basket, legs, tokens, price, cost, windowEnd }) => {
+      submitBuy: ({ basket, legs, tokens, price, cost, windowEnd, hash, chainId }) => {
         const id = `p-${Date.now().toString(36)}`;
         const position: Position = {
           id,
@@ -200,9 +225,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           legs,
           results: Object.fromEntries(legs.map((l) => [l.id, { state: "open" as const }])),
           status: "confirming",
-          hash: hex(`${id}${cost}`, 64),
+          hash: hash ?? hex(`${id}${cost}`, 64),
           at: Date.now(),
           windowEnd,
+          chainId,
         };
         update((s) => ({ ...s, positions: [position, ...s.positions] }));
         return { id, hash: position.hash };
@@ -251,11 +277,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
       },
       failBuy: (id) => update((s) => ({ ...s, positions: s.positions.filter((p) => p.id !== id) })),
-      redeem: (id) => {
+      redeem: (id, real) => {
         const p = state.positions.find((x) => x.id === id);
         if (!p || p.redeemed) return { amount: 0, hash: "" };
         const amount = Math.round(p.tokens * p.legs.reduce((sum, l) => sum + (p.results[l.id]?.state === "yes" ? l.weight : 0), 0) * 100) / 100;
-        const hash = hex(`redeem${id}`, 64);
+        const hash = real ?? hex(`redeem${id}`, 64);
         update((s) => ({
           ...s,
           balance: Math.round((s.balance + amount) * 100) / 100,
@@ -263,8 +289,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }));
         return { amount, hash };
       },
-      send: (id, to, tokens) => {
-        const hash = hex(`send${id}${to}${tokens}${Date.now()}`, 64);
+      send: (id, to, tokens, real) => {
+        const hash = real ?? hex(`send${id}${to}${tokens}${Date.now()}`, 64);
         update((s) => ({
           ...s,
           balance: Math.round((s.balance - 0.01) * 100) / 100,

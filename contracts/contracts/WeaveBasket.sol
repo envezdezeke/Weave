@@ -34,6 +34,7 @@ contract WeaveBasket is ERC1155, Ownable {
         uint256 supply; // tokens outstanding
         uint256 reserve; // USDC held for this basket
         uint256 payout; // USDC per token once settled
+        string meta; // JSON: series and Gemini instrument symbols per leg
     }
 
     mapping(uint256 => Basket) internal baskets;
@@ -97,6 +98,7 @@ contract WeaveBasket is ERC1155, Ownable {
         b.closeTime = closeTime;
         b.maxStale = maxStale;
         b.exists = true;
+        b.meta = meta;
         emit BasketCreated(id, weights, closeTime, meta);
     }
 
@@ -194,6 +196,10 @@ contract WeaveBasket is ERC1155, Ownable {
     {
         Basket storage b = _get(id);
         return (b.weights, b.results, b.closeTime, b.price, b.priceAt, b.supply, b.reserve, b.payout, b.open == 0);
+    }
+
+    function metaOf(uint256 id) external view returns (string memory) {
+        return _get(id).meta;
     }
 
     /// Reserve over max liability in bps (10_000 = fully covered). Drives the solvency gauge.

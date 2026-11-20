@@ -7,6 +7,8 @@ import { clock, dateTime, day, qty, short, tokenUsd, usd } from "@/lib/format";
 import type { Window } from "@/lib/markets";
 import { FEE, mintPrice, mintable, NETWORK_FEE, outcomes, quote, sizeFromCost, sizeHedge } from "@/lib/pricing";
 import { useStore } from "@/lib/store";
+import { buy as chainBuy, onchain } from "@/lib/chain";
+import { useLive } from "@/lib/live";
 import { Check, Spinner } from "./icons";
 import { Disclosure, ExtLink, Row } from "./ui";
 
@@ -32,11 +34,21 @@ export function BuyPanel({ basket, window: w, ends, now }: { basket: Basket; win
   const [receipt, setReceipt] = useState<{ tokens: number; cost: number; price: number; hash: string; at: number } | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  const price = mintPrice(basket.legs);
-  const sized = mode === "risk" ? sizeHedge(Number(atRisk) || 0, share / 100, price) : sizeFromCost(Number(spend) || 0, price);
-  const balance = store?.balance ?? 0;
+  // Onchain mode: Crash Cover buys the basket the operator has open on Arc, at
+  // its posted price, in whole tokens (each pays up to $1).
+  const live = useLive();
+  const ob = onchain && basket.rolling ? (live?.basket ?? null) : null;
+  const chainMode = onchain && !!basket.rolling;
+  const fresh = !!ob && !ob.settled && !!now && now < ob.closeTime && now - ob.priceAt < 120_000;
+  const price = ob && fresh ? ob.price : mintPrice(basket.legs);
+  const raw = mode === "risk" ? sizeHedge(Number(atRisk) || 0, share / 100, price) : sizeFromCost(Number(spend) || 0, price);
+  const whole = Math.floor(raw.tokens);
+  const sized = chainMode ? { ...raw, tokens: whole, maxPayout: whole, cost: Math.round(whole * price * 1e6) / 1e6 } : raw;
+  const balance = chainMode ? Infinity : (store?.balance ?? 0);
   const total = sized.cost + NETWORK_FEE;
-  const closed = !mintable(basket.legs) || (basket.rolling && (!w || !now || now >= w.buyBy));
+  const windowShut = !!basket.rolling && (!w || !now || now >= w.buyBy);
+  const closed = !mintable(basket.legs) || windowShut || (chainMode && !fresh);
+  const [error, setError] = useState<string | null>(null);
   const noAsk = basket.legs.some((l) => quote(l).ask === null);
   const endsLabel = !ends ? "–" : basket.rolling ? dateTime(ends) : day(ends);
 
@@ -44,16 +56,38 @@ export function BuyPanel({ basket, window: w, ends, now }: { basket: Basket; win
     ? "Loading wallet…"
     : noAsk
       ? "A leg has no ask on Gemini"
-      : closed
+      : chainMode && !fresh && !windowShut
+        ? "Waiting for the operator to price this hour"
+        : closed
         ? "This window has closed"
-        : sized.tokens < 0.01
-          ? "Enter an amount"
+        : sized.tokens < (chainMode ? 1 : 0.01)
+          ? chainMode ? "Enter an amount (at least 1 whole token)" : "Enter an amount"
           : total > balance
             ? "Not enough USDC"
             : null;
 
+  const confirmOnchain = () => {
+    if (!store || !ob) return;
+    setError(null);
+    setStep("submitting");
+    const order = { tokens: sized.tokens, cost: sized.cost, price };
+    // 2% slippage room over the posted price; the contract refuses anything above it.
+    chainBuy(ob.id, sized.tokens, sized.cost * 1.02, () => setStep("confirming"))
+      .then((hash) => {
+        const { id } = store.submitBuy({ basket, legs: basket.legs, ...order, windowEnd: w?.end, hash, chainId: ob.id });
+        store.confirmBuy(id);
+        setReceipt({ ...order, hash, at: Date.now() });
+        setStep("done");
+      })
+      .catch((e: Error) => {
+        setError(e.message.split("\n")[0]);
+        setStep("failed");
+      });
+  };
+
   const confirm = () => {
     if (!store || problem) return;
+    if (chainMode) return confirmOnchain();
     const s = sim();
     const { id, hash } = store.submitBuy({ basket, legs: basket.legs, tokens: sized.tokens, price, cost: sized.cost, windowEnd: w?.end });
     const order = { tokens: sized.tokens, cost: sized.cost, price, hash, at: 0 };
@@ -127,7 +161,7 @@ export function BuyPanel({ basket, window: w, ends, now }: { basket: Basket; win
           !
         </span>
         <h3 className="mt-4 text-lg font-semibold">Didn&apos;t go through. No money moved.</h3>
-        <p className="mt-1 text-sm text-fg-muted">Arc dropped this transaction before it confirmed. Try again.</p>
+        <p className="mt-1 text-sm text-fg-muted">{error ?? "Arc dropped this transaction before it confirmed. Try again."}</p>
         <button type="button" onClick={() => setStep("review")} className="mt-5 w-full rounded-full bg-fg py-3.5 text-sm font-semibold text-bg hover:opacity-90">
           Try again
         </button>

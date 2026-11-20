@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { redeem as chainRedeem, sendTokens as chainSend } from "@/lib/chain";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PriceChart, RANGE_LABEL, type Hover } from "@/components/charts";
 import { BasketIcon, Check, Spinner } from "@/components/icons";
@@ -217,6 +218,18 @@ function PositionCard({ p, now, onRedeemed, onSend }: { p: Position; now: number
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
   const redeem = () => {
+    if (p.chainId) {
+      // Real redemption: burn on Arc, then record the receipt locally.
+      setRedeeming("confirming");
+      chainRedeem(p.chainId, Math.round(p.tokens))
+        .then((hash) => {
+          const r = store?.redeem(p.id, hash);
+          if (r) onRedeemed(r.amount, r.hash);
+        })
+        .catch(() => {})
+        .finally(() => setRedeeming("idle"));
+      return;
+    }
     setRedeeming("submitting");
     setTimeout(() => setRedeeming("confirming"), 700);
     setTimeout(() => {
@@ -397,6 +410,15 @@ function SendForm({ p, onClose }: { p: Position; onClose: () => void }) {
         e.preventDefault();
         if (!valid || !store) return;
         setStep("confirming");
+        if (p.chainId) {
+          chainSend(p.chainId, to.trim() as `0x${string}`, Math.round(n))
+            .then((hash) => {
+              setHash(store.send(p.id, to.trim(), n, hash));
+              setStep("done");
+            })
+            .catch(() => setStep("edit" as typeof step));
+          return;
+        }
         setTimeout(() => {
           setHash(store.send(p.id, to.trim(), n));
           setStep("done");
