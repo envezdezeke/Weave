@@ -14,6 +14,7 @@ import {
   defineChain,
   erc20Abi,
   http,
+  parseAbiItem,
   parseUnits,
   type Abi,
   type Address,
@@ -21,6 +22,7 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { crashLegs, getEvent, type CrashLeg } from "../../web/src/lib/gemini.ts";
+import { hedgeEnabled, hedgeMint } from "./hedger.ts";
 
 const env = (k: string, d?: string) => {
   const v = process.env[k] ?? d;
@@ -132,7 +134,31 @@ async function resolve(b: Onchain) {
   }
 }
 
+// Hedge every new mint on the Gemini sandbox. Arc caps getLogs at 10k blocks.
+let lastBlock: bigint | null = null;
+const minted = parseAbiItem("event Minted(uint256 indexed id, address indexed to, uint256 amount, uint256 cost)");
+async function hedgeNewMints() {
+  const head = await pub.getBlockNumber();
+  if (lastBlock === null) lastBlock = head;
+  if (head <= lastBlock) return;
+  const from = head - lastBlock > 9_000n ? head - 9_000n : lastBlock + 1n;
+  const logs = await pub.getLogs({ address: WEAVE, event: minted, fromBlock: from, toBlock: head });
+  lastBlock = head;
+  for (const l of logs) {
+    const id = l.args.id!;
+    const meta = JSON.parse((await pub.readContract({ address: WEAVE, abi, functionName: "metaOf", args: [id] })) as string) as Meta;
+    const tokens = Number(l.args.amount);
+    if (!hedgeEnabled) {
+      log(`mint ${tokens} on basket ${id}: unhedged (no sandbox key)`);
+      continue;
+    }
+    const fills = await hedgeMint({ id, tokens, tx: l.transactionHash }, meta.legs, WEIGHTS);
+    log(`hedged mint ${tokens} on basket ${id}: ${fills.map((f) => (f.orderId ? `${f.qty} NO ${f.symbol} @${f.price}` : `FAILED ${f.symbol}: ${f.error}`)).join("; ")}`);
+  }
+}
+
 async function tick() {
+  await hedgeNewMints().catch((e) => log("hedge scan failed:", (e as Error).message.split("\n")[0]));
   const now = Date.now();
   const baskets = await recent();
   const legs = await crashLegs(now, CUTOFF_S * 1000);
@@ -142,7 +168,7 @@ async function tick() {
   for (const b of baskets) {
     const exp = Date.parse(b.meta.expires);
     if (!b.settled && now >= exp) await resolve(b);
-    else if (now / 1000 < Number(b.closeTime)) await price(b);
+    else if (!b.settled && now / 1000 < Number(b.closeTime)) await price(b);
   }
 }
 
